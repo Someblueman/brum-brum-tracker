@@ -18,3 +18,123 @@ How It Works: The Workflow
  -Plane Approaches: The backend script identifies a plane that is getting close and is high enough in the sky to be visible.
  -Data is Sent: The backend fetches a picture and key flight details (altitude, speed, etc.) for that specific plane and sends all the relevant information to the iPad in real-time.
  -"Brum Brum!": The iPad's webpage receives the data, plays a "brum brum" sound, points an arrow towards the plane, and displays its picture and other fun facts.
+
+## Getting Started
+
+### Prerequisites
+- Python 3.11 or higher
+- Git
+- A location with overhead air traffic
+
+### Installation
+
+1. Clone the repository:
+```bash
+git clone https://github.com/yourusername/brum-brum-tracker.git
+cd brum-brum-tracker
+```
+
+2. Create and activate a virtual environment:
+```bash
+python3 -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+```
+
+3. Install dependencies:
+```bash
+pip install --upgrade pip
+pip install -r requirements.txt
+```
+
+4. Configure your location:
+```bash
+cp .env.example .env
+# Edit .env with your coordinates:
+# HOME_LAT=your_latitude
+# HOME_LON=your_longitude
+```
+
+### Running the Application
+
+You need to run two servers:
+
+1. **Backend (WebSocket Server)** - Terminal 1:
+```bash
+source .venv/bin/activate
+python backend/app.py
+```
+This starts the WebSocket server on port 8000.
+
+2. **Frontend (HTTP Server)** - Terminal 2:
+```bash
+python serve.py
+```
+This serves the frontend on http://localhost:8080
+
+3. **Access the Application**:
+   - Open http://localhost:8080 in your browser
+   - Or on iPad: http://[your-computer-ip]:8080
+
+### iPad Setup
+
+1. Find your computer's IP address:
+   - Mac: `ifconfig | grep inet`
+   - Windows: `ipconfig`
+
+2. On iPad Safari, navigate to `http://[your-ip]:8080`
+
+3. Add to Home Screen:
+   - Tap the Share button
+   - Select "Add to Home Screen"
+
+4. Enable Guided Access (for child safety):
+   - Settings → Accessibility → Guided Access
+   - Start session and disable screen areas
+
+### Adding Sound
+
+The app expects a "brum brum" sound file. To add it:
+1. Record or download an airplane sound effect
+2. Save as `frontend/brum.mp3`
+3. Keep it short (1-2 seconds) and child-friendly
+
+### Current Features
+
+- Real-time aircraft tracking via OpenSky Network API
+- WebSocket streaming of aircraft data
+- Direction arrow pointing to aircraft (requires device orientation)
+- Aircraft information display (altitude, speed, distance)
+- Visual notifications with glow effect
+- Automatic reconnection on connection loss
+- Smart polling (only when clients connected)
+
+### Architecture
+
+```
+┌─────────────┐     WebSocket      ┌─────────────┐     HTTP        ┌─────────────┐
+│   Backend   │ ◄─────────────────► │  Frontend   │ ◄──────────────► │    iPad     │
+│  Port 8000  │                     │  Port 8080  │                  │   Browser   │
+└─────────────┘                     └─────────────┘                  └─────────────┘
+      │                                                                      │
+      │                                                                      │
+      ▼                                                                      ▼
+┌─────────────┐                                                      ┌─────────────┐
+│  OpenSky    │                                                      │   Device    │
+│     API     │                                                      │ Orientation │
+└─────────────┘                                                      └─────────────┘
+```
+
+### Troubleshooting
+
+- **Connection refused**: Ensure both servers are running
+- **No aircraft showing**: Check your coordinates in `.env`
+- **Arrow not rotating**: Device orientation requires HTTPS or user permission
+- **Sound not playing**: Add `brum.mp3` to frontend folder
+
+### Development Status
+
+- ✅ Backend core (Phases 2-4, 6)
+- ✅ Frontend interface (Phases 7-8, 10)
+- ⏳ Aircraft image scraping (Phase 5)
+- ⏳ PWA features (Phase 9)
+- ⏳ Production deployment (Phases 11-13)

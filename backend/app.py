@@ -19,8 +19,7 @@ if __name__ == "__main__":
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        print("
-Shutting down gracefully...")
+        print("\nShutting down gracefully...")
     except Exception as e:
         print(f"Error: {e}")
         sys.exit(1)

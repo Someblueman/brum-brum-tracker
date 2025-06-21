@@ -2,4 +2,4 @@ requests
 websockets
 beautifulsoup4
 python-dotenv
-opensky-api
+git+https://github.com/openskynetwork/opensky-api.git#subdirectory=python
