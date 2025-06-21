@@ -133,8 +133,135 @@ The app expects a "brum brum" sound file. To add it:
 
 ### Development Status
 
-- ✅ Backend core (Phases 2-4, 6)
-- ✅ Frontend interface (Phases 7-8, 10)
-- ⏳ Aircraft image scraping (Phase 5)
-- ⏳ PWA features (Phase 9)
-- ⏳ Production deployment (Phases 11-13)
+- ✅ Backend core (flight tracking, WebSocket API)
+- ✅ Frontend interface (display, animations, reconnection)
+- ✅ PWA features (manifest.json, icons, mobile web app)
+- ✅ Unit tests for geometry calculations
+- ✅ Pre-commit hooks (black, isort, flake8)
+- ⏳ Aircraft image scraping integration
+- ⏳ Production deployment optimization
+
+## Deployment
+
+### Local Network Deployment (Mac Mini/Raspberry Pi)
+
+1. **Set up the host machine**:
+   ```bash
+   # Clone and install as above
+   git clone https://github.com/yourusername/brum-brum-tracker.git
+   cd brum-brum-tracker
+   python3 -m venv .venv
+   source .venv/bin/activate
+   pip install -r requirements.txt
+   ```
+
+2. **Configure environment**:
+   ```bash
+   cp .env.example .env
+   # Edit .env with your exact coordinates
+   ```
+
+3. **Create startup scripts**:
+   
+   Create `start-backend.sh`:
+   ```bash
+   #!/bin/bash
+   cd /path/to/brum-brum-tracker
+   source .venv/bin/activate
+   python backend/app.py
+   ```
+   
+   Create `start-frontend.sh`:
+   ```bash
+   #!/bin/bash
+   cd /path/to/brum-brum-tracker
+   python serve.py
+   ```
+
+4. **Set up auto-start (macOS)**:
+   - Use LaunchAgents or screen/tmux sessions
+   - Or use PM2: `npm install -g pm2`
+   ```bash
+   pm2 start start-backend.sh --name brum-backend
+   pm2 start start-frontend.sh --name brum-frontend
+   pm2 save
+   pm2 startup
+   ```
+
+5. **Set up auto-start (Raspberry Pi)**:
+   - Add to `/etc/rc.local` or create systemd services
+
+### HTTPS Setup (Optional, for device orientation)
+
+For full device orientation support, you'll need HTTPS:
+
+1. **Generate self-signed certificate**:
+   ```bash
+   openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365 -nodes
+   ```
+
+2. **Modify `serve.py` for HTTPS** (optional)
+
+3. **Access via HTTPS**: `https://[your-ip]:8443`
+
+### Network Configuration
+
+1. **Find your local IP**:
+   ```bash
+   # macOS/Linux
+   ifconfig | grep "inet " | grep -v 127.0.0.1
+   
+   # Or use hostname
+   hostname -I  # Linux
+   ```
+
+2. **Configure firewall** (if needed):
+   - Allow ports 8000 (WebSocket) and 8080 (HTTP)
+   - macOS: System Preferences → Security & Privacy → Firewall
+   - Linux: `sudo ufw allow 8000 && sudo ufw allow 8080`
+
+### Performance Optimization
+
+- **Reduce polling frequency** during quiet hours
+- **Enable caching** for aircraft images
+- **Use nginx** as reverse proxy for production
+- **Monitor logs**: Check `events.log` for errors
+
+### Security Considerations
+
+- Keep the service on local network only
+- Don't expose to internet without proper authentication
+- Regularly update dependencies: `pip install --upgrade -r requirements.txt`
+
+## Development
+
+### Running Tests
+
+```bash
+source .venv/bin/activate
+pytest tests/ -v
+```
+
+### Code Quality
+
+Pre-commit hooks are configured for:
+- Black (code formatting)
+- isort (import sorting)
+- Flake8 (linting)
+
+Run manually:
+```bash
+pre-commit run --all-files
+```
+
+### Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Run tests and linting
+5. Submit a pull request
+
+## License
+
+This project is for personal/educational use. See LICENSE file for details.
