@@ -176,7 +176,10 @@ class AircraftTracker:
             websocket: WebSocket connection
             path: Request path
         """
-        client_address = websocket.remote_address
+        try:
+            client_address = getattr(websocket, 'remote_address', 'unknown')
+        except:
+            client_address = 'unknown'
         logger.info(f"New client connected from {client_address}")
         
         # Add to connected clients
@@ -239,9 +242,9 @@ class AircraftTracker:
 tracker = AircraftTracker()
 
 
-async def websocket_handler(websocket: WebSocketServerProtocol, path: str):
+async def websocket_handler(websocket: WebSocketServerProtocol):
     """WebSocket connection handler."""
-    await tracker.handle_client(websocket, path)
+    await tracker.handle_client(websocket, "/")
 
 
 async def main():

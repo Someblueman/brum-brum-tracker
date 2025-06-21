@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Brum Brum Tracker</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Connection Status -->
+        <div id="connection-status" class="disconnected">
+            <span class="status-dot"></span>
+            <span class="status-text">Connecting...</span>
+        </div>
+
+        <!-- Main Display -->
+        <div id="main-display">
+            <!-- Direction Arrow Container -->
+            <div id="arrow-container">
+                <img id="direction-arrow" src="arrow.svg" alt="Direction Arrow">
+                <div id="distance-display" class="info-badge">-- km</div>
+            </div>
+
+            <!-- Aircraft Image -->
+            <div id="aircraft-container">
+                <img id="plane-image" src="plane-placeholder.svg" alt="Aircraft">
+                <div id="callsign-display" class="callsign">--</div>
+            </div>
+
+            <!-- Flight Information -->
+            <div id="flight-info">
+                <div class="info-item">
+                    <span class="info-label">Height:</span>
+                    <span id="altitude-display" class="info-value">--</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Speed:</span>
+                    <span id="speed-display" class="info-value">--</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Type:</span>
+                    <span id="type-display" class="info-value">--</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- No Aircraft Message -->
+        <div id="no-aircraft" class="hidden">
+            <h2>Looking for planes...</h2>
+            <p>No aircraft overhead right now</p>
+        </div>
+
+        <!-- Audio Element -->
+        <audio id="brum-sound" src="brum.mp3" preload="auto"></audio>
+    </div>
+
+    <script src="main.js"></script>
+</body>
+</html>
