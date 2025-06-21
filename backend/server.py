@@ -7,7 +7,7 @@ import json
 import logging
 import time
 from datetime import datetime
-from typing import Set, Dict, Any, Optional
+from typing import Set, Dict, Any, Optional, List
 import websockets
 from websockets.server import WebSocketServerProtocol
 
@@ -24,6 +24,8 @@ from utils.constants import (
     WEBSOCKET_PORT,
     HOME_LAT,
     HOME_LON,
+    SEARCH_RADIUS_KM,
+    MIN_ELEVATION_ANGLE,
     POLLING_INTERVAL,
     LOG_FILE,
     LOG_LEVEL
@@ -39,6 +41,10 @@ logging.basicConfig(
         logging.StreamHandler()
     ]
 )
+
+# Also set debug level for our modules during debugging
+logging.getLogger('backend.opensky_client').setLevel(logging.DEBUG)
+logging.getLogger('utils.geometry').setLevel(logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 
@@ -87,6 +93,67 @@ class AircraftTracker:
         
         return message
     
+    def format_aircraft_list_message(self, aircraft_list: List[Dict[str, Any]]) -> Dict[str, Any]:
+            """
+            Format a list of approaching aircraft for the dashboard.
+            
+            Args:
+                aircraft_list: List of aircraft state dictionaries
+                
+            Returns:
+                Formatted message with aircraft list and ETAs
+            """
+            from utils.geometry import calculate_eta
+            
+            formatted_aircraft = []
+            
+            for aircraft in aircraft_list:
+                # Skip if no velocity data
+                if aircraft.get('velocity') is None:
+                    continue
+                
+                # Calculate ETA
+                eta_seconds = calculate_eta(
+                    aircraft['distance_km'],
+                    aircraft['velocity'],
+                    aircraft.get('elevation_angle', 0)
+                )
+                
+                # Skip if ETA is infinite (not approaching)
+                if eta_seconds == float('inf'):
+                    continue
+                
+                # Get cached data if available
+                cached_data = get_aircraft_from_cache(aircraft['icao24'])
+                
+                # Convert altitude and speed
+                altitude_ft = aircraft['baro_altitude'] * 3.28084 if aircraft['baro_altitude'] else 0
+                speed_kmh = aircraft['velocity'] * 3.6 if aircraft['velocity'] else 0
+                
+                formatted_aircraft.append({
+                    'icao24': aircraft['icao24'],
+                    'callsign': aircraft.get('callsign', '').strip(),
+                    'bearing': round(aircraft['bearing_from_home'], 1),
+                    'distance_km': round(aircraft['distance_km'], 1),
+                    'altitude_ft': round(altitude_ft),
+                    'speed_kmh': round(speed_kmh),
+                    'eta_seconds': round(eta_seconds),
+                    'eta_minutes': round(eta_seconds / 60, 1),
+                    'aircraft_type': cached_data['type'] if cached_data else '',
+                })
+            
+            # Sort by ETA (closest first)
+            formatted_aircraft.sort(key=lambda x: x['eta_seconds'])
+            
+            message = {
+                'type': 'approaching_aircraft_list',
+                'timestamp': datetime.utcnow().isoformat(),
+                'aircraft_count': len(formatted_aircraft),
+                'aircraft': formatted_aircraft[:10]  # Limit to 10 closest aircraft
+            }
+            
+            return message
+    
     async def broadcast_message(self, message: Dict[str, Any]) -> None:
         """
         Broadcast a message to all connected clients.
@@ -120,23 +187,39 @@ class AircraftTracker:
     async def polling_loop(self) -> None:
         """Main polling loop for fetching aircraft data."""
         logger.info("Starting aircraft polling loop")
+        logger.info(f"Home location: lat={HOME_LAT}, lon={HOME_LON}")
+        logger.info(f"Search radius: {SEARCH_RADIUS_KM}km")
+        logger.info(f"Polling interval: {POLLING_INTERVAL}s")
         
         while self.is_polling:
             try:
                 # Build search area
                 bbox = build_bounding_box(HOME_LAT, HOME_LON)
+                logger.debug(f"Built bounding box: {bbox}")
                 
                 # Fetch aircraft data
+                logger.info("Fetching aircraft data from OpenSky...")
                 all_aircraft = fetch_state_vectors(bbox)
+                logger.info(f"Received {len(all_aircraft)} aircraft from API")
                 
                 if all_aircraft:
+                    logger.debug(f"Processing {len(all_aircraft)} aircraft")
+                    
                     # Filter aircraft
                     filtered = filter_aircraft(all_aircraft)
+                    logger.info(f"Filtered to {len(filtered)} aircraft within criteria")
                     
                     # Find visible aircraft
                     visible = [a for a in filtered if is_visible(a)]
+                    logger.info(f"Found {len(visible)} visible aircraft (elevation > {MIN_ELEVATION_ANGLE}°)")
                     
-                    # Select best aircraft
+                    # Send list of all approaching aircraft for dashboard
+                    if filtered:
+                        list_message = self.format_aircraft_list_message(filtered)
+                        await self.broadcast_message(list_message)
+                        logger.debug(f"Sent approaching aircraft list: {list_message['aircraft_count']} planes")
+                    
+                    # Select best aircraft for main display
                     best_aircraft = select_best_plane(visible)
                     
                     if best_aircraft:

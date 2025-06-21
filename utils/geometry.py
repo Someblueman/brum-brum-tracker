@@ -116,3 +116,81 @@ def is_plane_approaching(home_bearing: float, plane_bearing: float,
     angle_diff = abs((plane_bearing - true_track + 180) % 360 - 180)
     
     return angle_diff < threshold
+
+
+def calculate_eta(distance_km: float, velocity_ms: float, 
+                  elevation_angle: float = 0) -> float:
+    """
+    Calculate estimated time of arrival for an aircraft.
+    
+    Args:
+        distance_km: Distance to aircraft in kilometers
+        velocity_ms: Aircraft velocity in meters per second
+        elevation_angle: Current elevation angle in degrees (optional)
+        
+    Returns:
+        ETA in seconds, or float('inf') if aircraft is not approaching
+    """
+    if velocity_ms is None or velocity_ms <= 0:
+        return float('inf')
+    
+    # Convert velocity to km/h for consistency
+    velocity_kmh = velocity_ms * 3.6
+    
+    # Simple calculation: time = distance / speed
+    # This assumes the aircraft maintains current speed and heading
+    eta_hours = distance_km / velocity_kmh
+    eta_seconds = eta_hours * 3600
+    
+    # If elevation angle is very low, aircraft might just be passing by
+    # rather than flying overhead
+    if elevation_angle < 5 and distance_km > 50:
+        return float('inf')
+    
+    return eta_seconds
+
+
+def calculate_eta(distance_km: float, velocity_ms: float, 
+                  current_elevation: float = 0.0, 
+                  target_elevation: float = 20.0) -> float:
+    """
+    Calculate estimated time of arrival for an aircraft.
+    
+    ETA is calculated as time until the aircraft reaches the target elevation angle
+    (default 20° which is our visibility threshold).
+    
+    Args:
+        distance_km: Current horizontal distance to aircraft in kilometers
+        velocity_ms: Aircraft ground speed in meters per second
+        current_elevation: Current elevation angle in degrees (default 0)
+        target_elevation: Target elevation angle in degrees (default 20)
+        
+    Returns:
+        Estimated time in seconds until aircraft reaches target elevation.
+        Returns infinity if aircraft is stationary or moving away.
+    """
+    # Convert velocity to km/h for easier calculation
+    velocity_kmh = velocity_ms * 3.6 if velocity_ms else 0
+    
+    # If aircraft is not moving or barely moving, return infinity
+    if velocity_kmh < 10:  # Less than 10 km/h
+        return float('inf')
+    
+    # If already above target elevation, aircraft is nearly overhead
+    if current_elevation >= target_elevation:
+        return 0
+    
+    # Simple linear approximation: time = distance / speed
+    # This assumes straight-line approach at constant altitude
+    eta_hours = distance_km / velocity_kmh
+    eta_seconds = eta_hours * 3600
+    
+    # Adjust for elevation angle if needed
+    # As plane gets closer, elevation increases non-linearly
+    # This is a simplified adjustment factor
+    if current_elevation > 10:
+        # Reduce ETA as we're already at significant elevation
+        adjustment_factor = 1 - (current_elevation / target_elevation) * 0.3
+        eta_seconds *= adjustment_factor
+    
+    return max(0, eta_seconds)

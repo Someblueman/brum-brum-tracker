@@ -5,8 +5,16 @@ OpenSky Network API client for fetching real-time flight data.
 import time
 import math
 import logging
+import requests
 from typing import List, Dict, Any, Optional, Tuple
-from opensky_api import OpenSkyApi
+
+try:
+    from opensky_api import OpenSkyApi
+    OPENSKY_API_AVAILABLE = True
+except ImportError:
+    logger = logging.getLogger(__name__)
+    logger.warning("opensky_api package not found, will use HTTP fallback")
+    OPENSKY_API_AVAILABLE = False
 
 from utils.constants import (
     OPENSKY_USERNAME, 
@@ -34,14 +42,166 @@ class FlightDataClient:
     def __init__(self):
         """Initialize the OpenSky API client."""
         self.last_request_time = 0
+        # Force HTTP fallback due to OAuth2 requirements
+        self.use_http_fallback = True
+        self.access_token = None
+        self.token_expires_at = 0
         
         # Initialize API client with or without credentials
-        if OPENSKY_USERNAME and OPENSKY_PASSWORD:
-            self.api = OpenSkyApi(username=OPENSKY_USERNAME, password=OPENSKY_PASSWORD)
-            logger.info("Initialized OpenSky API with authentication")
+        if self.use_http_fallback:
+            self.api = None
+            self.session = requests.Session()
+            # Note: Basic auth doesn't work well with requests Session for OpenSky
+            # We'll add auth headers manually in each request
+            logger.info("Using HTTP fallback (authentication will be added per-request)")
         else:
-            self.api = OpenSkyApi()
-            logger.info("Initialized OpenSky API without authentication (rate limited)")
+            if OPENSKY_USERNAME and OPENSKY_PASSWORD:
+                self.api = OpenSkyApi(username=OPENSKY_USERNAME, password=OPENSKY_PASSWORD)
+                logger.info("Initialized OpenSky API with authentication")
+            else:
+                self.api = OpenSkyApi()
+                logger.info("Initialized OpenSky API without authentication (rate limited)")
+    
+    def _fetch_via_http(self, bbox: Tuple[float, float, float, float]) -> List[Dict[str, Any]]:
+        """
+        Fetch aircraft data directly via HTTP API.
+        
+        Args:
+            bbox: Tuple of (min_lat, max_lat, min_lon, max_lon)
+            
+        Returns:
+            List of aircraft state dictionaries
+        """
+        url = "https://opensky-network.org/api/states/all"
+        params = {
+            'lamin': bbox[0],
+            'lamax': bbox[1],
+            'lomin': bbox[2],
+            'lomax': bbox[3]
+        }
+        
+        logger.debug(f"HTTP request to {url} with params: {params}")
+        
+        try:
+            # Add OAuth2 authentication if available
+            headers = {}
+            token = self._get_oauth_token()
+            if token:
+                headers['Authorization'] = f'Bearer {token}'
+                logger.debug("Using OAuth2 authentication")
+            else:
+                logger.debug("No authentication - using anonymous access")
+            
+            response = self.session.get(url, params=params, headers=headers, timeout=30)
+            
+            # Log response details for debugging
+            logger.debug(f"Response headers: {dict(response.headers)}")
+            
+            response.raise_for_status()
+            
+            data = response.json()
+            logger.debug(f"HTTP response status: {response.status_code}")
+            logger.debug(f"Response keys: {data.keys() if isinstance(data, dict) else 'not a dict'}")
+            
+            if not isinstance(data, dict) or 'states' not in data:
+                logger.warning(f"Unexpected response format: {type(data)}")
+                return []
+            
+            states = data.get('states', [])
+            logger.info(f"Received {len(states)} states from HTTP API")
+            
+            # Convert raw state arrays to dictionaries
+            aircraft_list = []
+            for idx, state in enumerate(states):
+                if len(state) < 17:  # Ensure we have all fields
+                    continue
+                    
+                aircraft = {
+                    'icao24': state[0],
+                    'callsign': state[1].strip() if state[1] else '',
+                    'origin_country': state[2],
+                    'time_position': state[3],
+                    'last_contact': state[4],
+                    'longitude': state[5],
+                    'latitude': state[6],
+                    'baro_altitude': state[7],
+                    'on_ground': state[8],
+                    'velocity': state[9],
+                    'true_track': state[10],
+                    'vertical_rate': state[11],
+                    'sensors': state[12],
+                    'geo_altitude': state[13],
+                    'squawk': state[14],
+                    'spi': state[15],
+                    'position_source': state[16]
+                }
+                
+                # Debug first few aircraft
+                if idx < 3:
+                    logger.debug(f"Aircraft {idx}: {aircraft['icao24']}, "
+                               f"pos=({aircraft['latitude']}, {aircraft['longitude']}), "
+                               f"alt={aircraft['baro_altitude']}")
+                
+                aircraft_list.append(aircraft)
+            
+            return aircraft_list
+            
+        except requests.exceptions.RequestException as e:
+            logger.error(f"HTTP request failed: {e}")
+            return []
+        except Exception as e:
+            logger.error(f"Error processing HTTP response: {e}", exc_info=True)
+            return []
+    
+    def _get_oauth_token(self) -> Optional[str]:
+        """
+        Get OAuth2 access token from OpenSky auth server.
+        
+        Returns:
+            Access token string or None if authentication fails
+        """
+        # Check if we have valid cached token
+        current_time = time.time()
+        if self.access_token and current_time < self.token_expires_at:
+            return self.access_token
+        
+        # Need to get new token
+        if not OPENSKY_USERNAME or not OPENSKY_PASSWORD:
+            logger.debug("No OAuth2 credentials configured")
+            return None
+        
+        logger.info("Fetching new OAuth2 access token")
+        
+        token_url = "https://auth.opensky-network.org/auth/realms/opensky-network/protocol/openid-connect/token"
+        
+        data = {
+            'grant_type': 'client_credentials',
+            'client_id': OPENSKY_USERNAME,  # This is actually the OAuth2 client_id
+            'client_secret': OPENSKY_PASSWORD  # This is actually the OAuth2 client_secret
+        }
+        
+        try:
+            response = requests.post(token_url, data=data, timeout=10)
+            response.raise_for_status()
+            
+            token_data = response.json()
+            self.access_token = token_data.get('access_token')
+            
+            # Token expires in 30 minutes, but we'll refresh 5 minutes early
+            expires_in = token_data.get('expires_in', 1800)
+            self.token_expires_at = current_time + expires_in - 300
+            
+            logger.info(f"OAuth2 token obtained, expires in {expires_in}s")
+            return self.access_token
+            
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Failed to get OAuth2 token: {e}")
+            if hasattr(e, 'response') and e.response is not None:
+                logger.error(f"Response: {e.response.text}")
+            return None
+        except Exception as e:
+            logger.error(f"Error processing OAuth2 token response: {e}")
+            return None
     
     def _enforce_rate_limit(self) -> None:
         """Ensure we respect the API rate limit."""
@@ -65,17 +225,44 @@ class FlightDataClient:
         """
         self._enforce_rate_limit()
         
+        # Debug: Log the bounding box being used
+        logger.info(f"Fetching state vectors with bbox: min_lat={bbox[0]:.4f}, max_lat={bbox[1]:.4f}, "
+                   f"min_lon={bbox[2]:.4f}, max_lon={bbox[3]:.4f}")
+        
         try:
+            if self.use_http_fallback:
+                # Use HTTP fallback
+                logger.info("Using HTTP fallback to fetch aircraft data")
+                aircraft_list = self._fetch_via_http(bbox)
+                self.last_request_time = time.time()
+                return aircraft_list
+            
+            # Debug: Log API call attempt
+            logger.debug(f"Calling OpenSky API get_states() with bbox={bbox}")
+            
             # Fetch states from API
             states = self.api.get_states(bbox=bbox)
             self.last_request_time = time.time()
             
+            # Debug: Log API response
+            logger.info(f"OpenSky API response: states={states}, "
+                       f"has states: {states is not None and hasattr(states, 'states')}")
+            
             if not states:
+                logger.warning("No states returned from OpenSky API (states is None or empty)")
                 return []
+            
+            if not hasattr(states, 'states') or not states.states:
+                logger.warning(f"States object has no 'states' attribute or it's empty. "
+                              f"Type: {type(states)}, Dir: {dir(states) if states else 'N/A'}")
+                return []
+            
+            # Debug: Log number of states
+            logger.info(f"Processing {len(states.states)} aircraft states")
             
             # Convert state vectors to dictionaries
             aircraft_list = []
-            for state in states.states:
+            for idx, state in enumerate(states.states):
                 aircraft = {
                     'icao24': state.icao24,
                     'callsign': state.callsign.strip() if state.callsign else '',
@@ -89,13 +276,23 @@ class FlightDataClient:
                     'vertical_rate': state.vertical_rate,  # m/s
                     'last_contact': state.time_position
                 }
+                
+                # Debug: Log first few aircraft details
+                if idx < 3:
+                    logger.debug(f"Aircraft {idx}: icao24={aircraft['icao24']}, "
+                               f"lat={aircraft['latitude']}, lon={aircraft['longitude']}, "
+                               f"alt={aircraft['baro_altitude']}, on_ground={aircraft['on_ground']}")
+                
                 aircraft_list.append(aircraft)
             
             logger.info(f"Fetched {len(aircraft_list)} aircraft from OpenSky")
             return aircraft_list
             
         except Exception as e:
-            logger.error(f"Error fetching state vectors: {e}")
+            logger.error(f"Error fetching state vectors: {e}", exc_info=True)
+            # Debug: Log more details about the error
+            logger.error(f"Exception type: {type(e).__name__}")
+            logger.error(f"Exception args: {e.args}")
             return []
     
     def build_bounding_box(self, home_lat: float, home_lon: float, 
