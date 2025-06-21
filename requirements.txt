@@ -1,0 +1,5 @@
+requests
+websockets
+beautifulsoup4
+python-dotenv
+opensky-api
