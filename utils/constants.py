@@ -21,9 +21,9 @@ OPENSKY_USERNAME = os.getenv('OPENSKY_USERNAME', '')  # OAuth2 client_id
 OPENSKY_PASSWORD = os.getenv('OPENSKY_PASSWORD', '')  # OAuth2 client_secret
 
 # Search and visibility parameters
-SEARCH_RADIUS_KM = 100  # Search radius in kilometers
+SEARCH_RADIUS_KM = 50  # Search radius in kilometers (optimized for <25 sq deg, 1 credit)
 MIN_ELEVATION_ANGLE = 20  # Minimum elevation angle in degrees for visibility
-POLLING_INTERVAL = 10  # Seconds between API calls (respects rate limit)
+POLLING_INTERVAL = 5  # Seconds between API calls (faster updates with lower credit usage)
 UPDATE_INTERVAL = 5  # Seconds between frontend updates
 
 # WebSocket configuration
