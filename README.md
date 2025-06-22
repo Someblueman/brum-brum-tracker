@@ -34,13 +34,7 @@ git clone https://github.com/yourusername/brum-brum-tracker.git
 cd brum-brum-tracker
 ```
 
-2. Create and activate a virtual environment:
-```bash
-python3 -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-```
-
-3. Install dependencies:
+2. Install dependencies:
 ```bash
 pip install --upgrade pip
 pip install -r requirements.txt
@@ -60,7 +54,6 @@ You need to run two servers:
 
 1. **Backend (WebSocket Server)** - Terminal 1:
 ```bash
-source .venv/bin/activate
 python backend/app.py
 ```
 This starts the WebSocket server on port 8000.
@@ -150,8 +143,6 @@ The app expects a "brum brum" sound file. To add it:
    # Clone and install as above
    git clone https://github.com/yourusername/brum-brum-tracker.git
    cd brum-brum-tracker
-   python3 -m venv .venv
-   source .venv/bin/activate
    pip install -r requirements.txt
    ```
 
@@ -167,7 +158,6 @@ The app expects a "brum brum" sound file. To add it:
    ```bash
    #!/bin/bash
    cd /path/to/brum-brum-tracker
-   source .venv/bin/activate
    python backend/app.py
    ```
    
