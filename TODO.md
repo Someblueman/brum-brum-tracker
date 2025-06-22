@@ -1,7 +1,7 @@
  ‑Each task is phrased as a single, clear action.
  ‑Where a task logically depends on another, it is indented under its parent.
 
- .venv; activate; pip install --upgrade pip).
+ pip install --upgrade pip).
 1.2 Add a requirements.txt with: requests, websockets, beautifulsoup4.
 1.3 Commit an empty backend/ folder and an entry‑point file backend/app.py.
 1.4 Create .env.example with placeholders for HOME_LAT, HOME_LON, and OpenSky credentials.
