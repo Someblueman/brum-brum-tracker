@@ -3,7 +3,7 @@ Unit tests for geometry helper functions
 """
 import pytest
 import math
-from utils.geometry import haversine_distance, bearing_between, elevation_angle, is_plane_approaching
+from utils.geometry import haversine_distance, bearing_between, elevation_angle, is_plane_approaching, calculate_eta
 
 
 class TestHaversineDistance:
@@ -165,6 +165,81 @@ class TestIsPlaneApproaching:
         for home_bearing, plane_bearing, track, expected in test_cases:
             result = is_plane_approaching(home_bearing, plane_bearing, track)
             assert result == expected, f"Failed for home_bearing={home_bearing}, plane_bearing={plane_bearing}, track={track}"
+
+
+class TestCalculateETA:
+    """Test cases for calculate_eta function"""
+    
+    def test_stationary_aircraft(self):
+        """Aircraft not moving should return infinity"""
+        eta = calculate_eta(50, 0)  # 0 m/s velocity
+        assert eta == float('inf')
+        
+        # Very slow aircraft (< 10 km/h)
+        eta = calculate_eta(50, 2)  # 2 m/s = 7.2 km/h
+        assert eta == float('inf')
+    
+    def test_already_overhead(self):
+        """Aircraft already at or above target elevation should return 0"""
+        # Already at target elevation
+        eta = calculate_eta(10, 100, current_elevation=20, target_elevation=20)
+        assert eta == 0
+        
+        # Above target elevation
+        eta = calculate_eta(5, 100, current_elevation=30, target_elevation=20)
+        assert eta == 0
+    
+    def test_simple_approach(self):
+        """Test simple linear approach calculation"""
+        # 50 km distance, 250 m/s (900 km/h) - typical jet speed
+        eta = calculate_eta(50, 250)
+        # 50 km / 900 km/h = 0.0556 hours = 200 seconds
+        assert 195 < eta < 205
+        
+        # 100 km distance, 200 m/s (720 km/h)
+        eta = calculate_eta(100, 200)
+        # 100 km / 720 km/h = 0.139 hours = 500 seconds
+        assert 495 < eta < 505
+    
+    def test_with_elevation_adjustment(self):
+        """Test ETA with elevation angle adjustment"""
+        # Already at 15° elevation, approaching 20° target
+        eta = calculate_eta(10, 100, current_elevation=15, target_elevation=20)
+        # Should be reduced due to already high elevation
+        # Base: 10 km / 360 km/h = 100 seconds
+        # With adjustment factor: ~77.5 seconds
+        assert 70 < eta < 85
+    
+    def test_various_speeds(self):
+        """Test with various aircraft speeds"""
+        distance = 50  # km
+        
+        # Small prop plane (150 km/h = 41.7 m/s)
+        eta = calculate_eta(distance, 42)
+        assert 1190 < eta < 1210  # About 20 minutes
+        
+        # Regional jet (500 km/h = 139 m/s)
+        eta = calculate_eta(distance, 139)
+        assert 355 < eta < 365  # About 6 minutes
+        
+        # Fast jet (1000 km/h = 278 m/s)
+        eta = calculate_eta(distance, 278)
+        assert 175 < eta < 185  # About 3 minutes
+    
+    def test_edge_cases(self):
+        """Test edge cases"""
+        # Zero distance (overhead)
+        eta = calculate_eta(0, 100)
+        assert eta == 0
+        
+        # Negative values should not cause errors
+        eta = calculate_eta(50, 100, current_elevation=-5)
+        assert eta > 0
+        
+        # Very high current elevation
+        eta = calculate_eta(50, 100, current_elevation=19, target_elevation=20)
+        # Should be significantly reduced
+        assert 0 < eta < 400  # Still some time needed even at high elevation
 
 
 if __name__ == "__main__":
