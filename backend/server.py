@@ -19,6 +19,7 @@ from backend.opensky_client import (
     select_best_plane
 )
 from backend.db import get_aircraft_from_cache
+from backend.aircraft_data import get_aircraft_data
 from utils.constants import (
     WEBSOCKET_HOST,
     WEBSOCKET_PORT,
@@ -59,39 +60,40 @@ class AircraftTracker:
         self.polling_task: Optional[asyncio.Task] = None
     
     def format_aircraft_message(self, aircraft: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Format aircraft data for frontend consumption.
-        
-        Args:
-            aircraft: Aircraft state dictionary
+            """
+            Format aircraft data for frontend consumption.
             
-        Returns:
-            Formatted message dictionary
-        """
-        # Get cached image data if available
-        cached_data = get_aircraft_from_cache(aircraft['icao24'])
-        
-        # Convert altitude from meters to feet
-        altitude_ft = aircraft['baro_altitude'] * 3.28084 if aircraft['baro_altitude'] else 0
-        
-        # Convert velocity from m/s to km/h
-        speed_kmh = aircraft['velocity'] * 3.6 if aircraft['velocity'] else 0
-        
-        message = {
-            'type': 'aircraft_update',
-            'timestamp': datetime.utcnow().isoformat(),
-            'icao24': aircraft['icao24'],
-            'callsign': aircraft.get('callsign', ''),
-            'bearing': round(aircraft['bearing_from_home'], 1),
-            'distance_km': round(aircraft['distance_km'], 1),
-            'altitude_ft': round(altitude_ft),
-            'speed_kmh': round(speed_kmh),
-            'elevation_angle': round(aircraft['elevation_angle'], 1),
-            'aircraft_type': cached_data['type'] if cached_data else '',
-            'image_url': cached_data['image_url'] if cached_data else ''
-        }
-        
-        return message
+            Args:
+                aircraft: Aircraft state dictionary
+                
+            Returns:
+                Formatted message dictionary
+            """
+            # Get image data using scraper (checks cache first)
+            media_data = get_aircraft_data(aircraft['icao24'])
+            
+            # Convert altitude from meters to feet
+            altitude_ft = aircraft['baro_altitude'] * 3.28084 if aircraft['baro_altitude'] else 0
+            
+            # Convert velocity from m/s to km/h
+            speed_kmh = aircraft['velocity'] * 3.6 if aircraft['velocity'] else 0
+            
+            message = {
+                'type': 'aircraft_update',
+                'timestamp': datetime.utcnow().isoformat(),
+                'icao24': aircraft['icao24'],
+                'callsign': aircraft.get('callsign', ''),
+                'bearing': round(aircraft['bearing_from_home'], 1),
+                'distance_km': round(aircraft['distance_km'], 1),
+                'altitude_ft': round(altitude_ft),
+                'speed_kmh': round(speed_kmh),
+                'elevation_angle': round(aircraft['elevation_angle'], 1),
+                'aircraft_type': media_data.get('type', ''),
+                'image_url': media_data.get('image_url', '')
+            }
+            
+            return message
+
     
     def format_aircraft_list_message(self, aircraft_list: List[Dict[str, Any]]) -> Dict[str, Any]:
             """
@@ -123,8 +125,8 @@ class AircraftTracker:
                 if eta_seconds == float('inf'):
                     continue
                 
-                # Get cached data if available
-                cached_data = get_aircraft_from_cache(aircraft['icao24'])
+                # Get image data using scraper (checks cache first)
+                media_data = get_aircraft_data(aircraft['icao24'])
                 
                 # Convert altitude and speed
                 altitude_ft = aircraft['baro_altitude'] * 3.28084 if aircraft['baro_altitude'] else 0
@@ -139,7 +141,7 @@ class AircraftTracker:
                     'speed_kmh': round(speed_kmh),
                     'eta_seconds': round(eta_seconds),
                     'eta_minutes': round(eta_seconds / 60, 1),
-                    'aircraft_type': cached_data['type'] if cached_data else '',
+                    'aircraft_type': media_data.get('type', ''),
                 })
             
             # Sort by ETA (closest first)
@@ -276,9 +278,17 @@ class AircraftTracker:
         }
         await websocket.send(json.dumps(welcome_msg))
         
-        # Send last aircraft data if available
+        # Send last aircraft data if available, otherwise send searching message
         if self.last_aircraft_data:
             await websocket.send(json.dumps(self.last_aircraft_data))
+        else:
+            # Send initial searching message
+            searching_msg = {
+                'type': 'searching',
+                'timestamp': datetime.utcnow().isoformat(),
+                'message': 'Searching for aircraft...'
+            }
+            await websocket.send(json.dumps(searching_msg))
         
         # Start polling if this is the first client
         if len(self.connected_clients) == 1 and not self.is_polling:
@@ -325,22 +335,33 @@ class AircraftTracker:
 tracker = AircraftTracker()
 
 
-async def websocket_handler(websocket: WebSocketServerProtocol):
+async def websocket_handler(websocket):
     """WebSocket connection handler."""
-    await tracker.handle_client(websocket, "/")
+    # Extract path from websocket.path if needed
+    path = getattr(websocket, 'path', '/')
+    await tracker.handle_client(websocket, path)
+
+
 
 
 async def main():
     """Main server entry point."""
     logger.info(f"Starting WebSocket server on {WEBSOCKET_HOST}:{WEBSOCKET_PORT}")
     
-    # Start WebSocket server
+    # Start WebSocket server with additional parameters for better compatibility
     async with websockets.serve(
         websocket_handler,
         WEBSOCKET_HOST,
-        WEBSOCKET_PORT
+        WEBSOCKET_PORT,
+        # Additional parameters for better connection handling
+        compression=None,  # Disable compression for better compatibility
+        max_size=10 * 1024 * 1024,  # 10MB max message size
+        ping_interval=20,  # Send ping every 20 seconds
+        ping_timeout=10,  # Wait 10 seconds for pong
+        close_timeout=10,  # Wait 10 seconds for close
     ):
         logger.info(f"Server running at ws://{WEBSOCKET_HOST}:{WEBSOCKET_PORT}/ws")
+        logger.info("WebSocket parameters: compression=None, ping_interval=20s")
         await asyncio.Future()  # Run forever
 
 

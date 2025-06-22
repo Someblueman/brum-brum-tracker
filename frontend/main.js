@@ -35,6 +35,9 @@ const elements = {
  * Initialize the application
  */
 function init() {
+    // Initialize UI state
+    showNoAircraft();
+    
     setupWebSocket();
     setupOrientationHandling();
     
@@ -47,6 +50,7 @@ function init() {
  */
 function setupWebSocket() {
     updateConnectionStatus('connecting');
+    showNoAircraft(true);  // Show connecting message
     
     try {
         websocket = new WebSocket(WEBSOCKET_URL);
@@ -104,6 +108,10 @@ function handleMessage(data) {
             console.log('Received welcome message');
             break;
             
+        case 'searching':
+            showSearching();
+            break;
+            
         case 'aircraft_update':
             updateAircraftDisplay(data);
             break;
@@ -122,6 +130,7 @@ function handleMessage(data) {
  */
 function updateAircraftDisplay(aircraft) {
     currentAircraft = aircraft;
+
     
     // Show main display, hide no aircraft message
     elements.mainDisplay.classList.remove('hidden');
@@ -149,10 +158,41 @@ function updateAircraftDisplay(aircraft) {
 /**
  * Show no aircraft message
  */
-function showNoAircraft() {
+function showNoAircraft(connecting = false) {
     currentAircraft = null;
     elements.mainDisplay.classList.add('hidden');
     elements.noAircraft.classList.remove('hidden');
+    
+    // Update message based on connection state
+    const titleElement = document.getElementById('no-aircraft-title');
+    const subtitleElement = document.getElementById('no-aircraft-subtitle');
+    
+    if (connecting) {
+        titleElement.textContent = 'Connecting...';
+        subtitleElement.textContent = 'Establishing connection to aircraft tracker';
+    } else {
+        titleElement.textContent = 'Clear skies';
+        subtitleElement.textContent = 'No aircraft visible overhead right now';
+    }
+    
+    // Remove glow effect
+    clearTimeout(glowTimeout);
+    elements.directionArrow.classList.remove('glow');
+}
+
+/**
+ * Show searching message
+ */
+function showSearching() {
+    currentAircraft = null;
+    elements.mainDisplay.classList.add('hidden');
+    elements.noAircraft.classList.remove('hidden');
+    
+    const titleElement = document.getElementById('no-aircraft-title');
+    const subtitleElement = document.getElementById('no-aircraft-subtitle');
+    
+    titleElement.textContent = 'Scanning the skies...';
+    subtitleElement.textContent = 'Looking for aircraft overhead';
     
     // Remove glow effect
     clearTimeout(glowTimeout);
@@ -165,6 +205,7 @@ function showNoAircraft() {
 function updateArrowRotation(planeBearing) {
     // Calculate final rotation: plane bearing - device heading
     const rotation = planeBearing - deviceHeading;
+
     elements.directionArrow.style.transform = `rotate(${rotation}deg)`;
 }
 
