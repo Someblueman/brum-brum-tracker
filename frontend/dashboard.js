@@ -4,7 +4,10 @@
  */
 
 // Configuration
-const WS_URL = `ws://${window.location.hostname}:8000/ws`;
+// Use WSS when page is served over HTTPS, WS otherwise
+const WS_PROTOCOL = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+const WS_PORT = window.location.protocol === 'https:' ? '8001' : '8000';
+const WS_URL = `${WS_PROTOCOL}//${window.location.hostname}:${WS_PORT}/ws`;
 const RECONNECT_DELAY = 3000;
 
 // State
@@ -32,6 +35,8 @@ document.addEventListener('DOMContentLoaded', () => {
  * Connect to WebSocket server
  */
 function connectWebSocket() {
+    console.log(`Connecting to WebSocket at ${WS_URL}`);
+    
     ws = new WebSocket(WS_URL);
     
     ws.onopen = () => {

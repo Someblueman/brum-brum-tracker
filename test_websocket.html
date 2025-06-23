@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WebSocket Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .connected { background: #4CAF50; color: white; }
+        .disconnected { background: #f44336; color: white; }
+        .connecting { background: #ff9800; color: white; }
+        .log {
+            background: #f5f5f5;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1>WebSocket Connection Test</h1>
+    
+    <div id="status" class="status disconnected">Disconnected</div>
+    
+    <div>
+        <button onclick="connect()">Connect</button>
+        <button onclick="disconnect()">Disconnect</button>
+        <button onclick="clearLog()">Clear Log</button>
+    </div>
+    
+    <h3>Configuration:</h3>
+    <div id="config"></div>
+    
+    <h3>Log:</h3>
+    <div id="log" class="log"></div>
+
+    <script>
+        // Configuration
+        const WEBSOCKET_PROTOCOL = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const WEBSOCKET_PORT = window.location.protocol === 'https:' ? '8001' : '8000';
+        const WEBSOCKET_URL = `${WEBSOCKET_PROTOCOL}//${window.location.hostname}:${WEBSOCKET_PORT}/ws`;
+        
+        let websocket = null;
+        let reconnectTimeout = null;
+        let reconnectAttempts = 0;
+        
+        // Show configuration
+        document.getElementById('config').innerHTML = `
+            Protocol: ${window.location.protocol}<br>
+            WebSocket URL: ${WEBSOCKET_URL}<br>
+            Host: ${window.location.hostname}<br>
+            Port: ${WEBSOCKET_PORT}
+        `;
+        
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            const prefix = type === 'error' ? '❌' : type === 'success' ? '✅' : '📝';
+            logDiv.innerHTML += `${timestamp} ${prefix} ${message}\n`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+            console.log(message);
+        }
+        
+        function updateStatus(status) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.className = 'status ' + status;
+            statusDiv.textContent = status.charAt(0).toUpperCase() + status.slice(1);
+        }
+        
+        function connect() {
+            if (websocket && websocket.readyState === WebSocket.OPEN) {
+                log('Already connected', 'info');
+                return;
+            }
+            
+            log(`Attempting to connect to ${WEBSOCKET_URL}...`, 'info');
+            updateStatus('connecting');
+            
+            try {
+                websocket = new WebSocket(WEBSOCKET_URL);
+                
+                websocket.onopen = (event) => {
+                    log('WebSocket connected!', 'success');
+                    updateStatus('connected');
+                    reconnectAttempts = 0;
+                    clearTimeout(reconnectTimeout);
+                };
+                
+                websocket.onmessage = (event) => {
+                    log(`Message received: ${event.data}`, 'info');
+                };
+                
+                websocket.onerror = (error) => {
+                    log(`WebSocket error: ${error}`, 'error');
+                    updateStatus('disconnected');
+                };
+                
+                websocket.onclose = (event) => {
+                    log(`WebSocket closed. Code: ${event.code}, Reason: ${event.reason || 'No reason'}`, 'error');
+                    updateStatus('disconnected');
+                    websocket = null;
+                    
+                    // Auto-reconnect after 5 seconds
+                    clearTimeout(reconnectTimeout);
+                    reconnectTimeout = setTimeout(() => {
+                        reconnectAttempts++;
+                        log(`Auto-reconnect attempt #${reconnectAttempts}...`, 'info');
+                        connect();
+                    }, 5000);
+                };
+                
+            } catch (error) {
+                log(`Failed to create WebSocket: ${error}`, 'error');
+                updateStatus('disconnected');
+            }
+        }
+        
+        function disconnect() {
+            clearTimeout(reconnectTimeout);
+            if (websocket) {
+                log('Closing WebSocket connection...', 'info');
+                websocket.close();
+            } else {
+                log('No active connection', 'info');
+            }
+        }
+        
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+        }
+        
+        // Auto-connect on load
+        window.addEventListener('load', () => {
+            log('Page loaded. Auto-connecting in 1 second...', 'info');
+            setTimeout(connect, 1000);
+        });
+    </script>
+</body>
+</html>

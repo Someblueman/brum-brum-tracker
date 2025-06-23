@@ -50,7 +50,28 @@ cp .env.example .env
 
 ### Running the Application
 
-You need to run two servers:
+You need to run two servers. Choose either HTTP or HTTPS mode:
+
+#### Option A: HTTPS Mode (Recommended for iPad/iPhone with compass)
+
+1. **Backend (SSL WebSocket Server)** - Terminal 1:
+```bash
+python backend/app_ssl.py
+```
+This starts the secure WebSocket server on ports 8000 (ws) and 8001 (wss).
+
+2. **Frontend (HTTPS Server)** - Terminal 2:
+```bash
+python serve_https.py
+```
+This serves the frontend on https://localhost:8443
+
+3. **Access the Application**:
+   - Open https://localhost:8443 in your browser
+   - Accept the certificate warning
+   - Or on iPad: https://[your-computer-ip]:8443
+
+#### Option B: HTTP Mode (Simple setup, no compass on iOS)
 
 1. **Backend (WebSocket Server)** - Terminal 1:
 ```bash
@@ -119,20 +140,67 @@ The app expects a "brum brum" sound file. To add it:
 
 ### Troubleshooting
 
-- **Connection refused**: Ensure both servers are running
-- **No aircraft showing**: Check your coordinates in `.env`
-- **Arrow not rotating**: Device orientation requires HTTPS or user permission
-- **Sound not playing**: Add `brum.mp3` to frontend folder
+#### Connection Issues
+- **"Connection refused" or "WebSocket error"**:
+  - Ensure both backend and frontend servers are running
+  - Check the browser console for specific error messages
+  - Verify ports are not blocked by firewall
+  
+- **"Address already in use" error**:
+  ```bash
+  # Find what's using the port
+  lsof -i :PORT_NUMBER
+  # Kill the process
+  kill PID
+  ```
+
+#### No Aircraft Showing
+- **Check backend logs**: Look for "Received X aircraft from API"
+- **Verify location**: Ensure `.env` has correct HOME_LAT and HOME_LON
+- **API credentials**: Confirm OpenSky credentials are valid
+- **Coverage area**: Not all areas have aircraft coverage
+
+#### Compass/Arrow Issues
+- **Arrow not rotating on iPad/iPhone**:
+  1. Must use HTTPS mode (not HTTP)
+  2. Tap "Enable Compass" button when it appears
+  3. Grant permission when prompted
+  4. If denied: Settings → Safari → Motion & Orientation Access
+  
+- **"Compass: HTTPS Required"**: Switch to HTTPS mode
+- **"Compass: Not Available"**: Device may not have compass sensor
+
+#### HTTPS/Certificate Issues
+- **Certificate warnings**: Normal for self-signed certs, click "Advanced" → "Proceed"
+- **WSS connection fails**:
+  1. Open https://[your-ip]:8001 in a new tab
+  2. Accept the certificate warning
+  3. Return to main app
+  
+- **Mixed content blocked**: Use the SSL backend (`app_ssl.py`)
+
+#### Audio Issues
+- **No sound playing**:
+  - Add `brum.mp3` to frontend folder
+  - Browser may block autoplay - tap screen first
+  - Check device volume and mute switch
+
+#### Performance Issues
+- **Slow updates**: OpenSky API has rate limits
+- **High CPU usage**: Check if multiple server instances are running
 
 ### Development Status
 
 - ✅ Backend core (flight tracking, WebSocket API)
 - ✅ Frontend interface (display, animations, reconnection)
 - ✅ PWA features (manifest.json, icons, mobile web app)
+- ✅ HTTPS/WSS support (SSL certificates, secure WebSocket)
+- ✅ iOS device orientation (compass) support
+- ✅ Aircraft image scraping with caching
 - ✅ Unit tests for geometry calculations
 - ✅ Pre-commit hooks (black, isort, flake8)
-- ⏳ Aircraft image scraping integration
 - ⏳ Production deployment optimization
+- ⏳ Service worker for offline support
 
 ## Deployment
 
@@ -181,18 +249,20 @@ The app expects a "brum brum" sound file. To add it:
 5. **Set up auto-start (Raspberry Pi)**:
    - Add to `/etc/rc.local` or create systemd services
 
-### HTTPS Setup (Optional, for device orientation)
+### HTTPS Setup (For iPad/iPhone Compass)
 
-For full device orientation support, you'll need HTTPS:
+The application now fully supports HTTPS with secure WebSocket (WSS) connections. This enables:
+- ✅ Device orientation (compass) on iOS devices
+- ✅ Real-time plane tracking over secure connection
+- ✅ No mixed content warnings
 
-1. **Generate self-signed certificate**:
-   ```bash
-   openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365 -nodes
-   ```
+To use HTTPS mode:
+1. Run the SSL backend: `python backend/app_ssl.py`
+2. Run the HTTPS frontend: `python serve_https.py`
+3. Accept the certificate warning when accessing the site
+4. Enable compass by tapping the "Enable Compass" button on iOS
 
-2. **Modify `serve.py` for HTTPS** (optional)
-
-3. **Access via HTTPS**: `https://[your-ip]:8443`
+The SSL backend automatically generates self-signed certificates on first run.
 
 ### Network Configuration
 
