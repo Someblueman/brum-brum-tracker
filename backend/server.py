@@ -57,6 +57,8 @@ class AircraftTracker:
         self.connected_clients: Set[WebSocketServerProtocol] = set()
         self.last_aircraft_data: Optional[Dict[str, Any]] = None
         self.is_polling = False
+        self.spotted_aircraft: Set[str] = set()  # Track all aircraft we've ever seen
+        self.visible_aircraft: Set[str] = set()  # Track aircraft that have been visible
         self.polling_task: Optional[asyncio.Task] = None
     
     def format_aircraft_message(self, aircraft: Dict[str, Any]) -> Dict[str, Any]:
@@ -211,9 +213,25 @@ class AircraftTracker:
                     filtered = filter_aircraft(all_aircraft)
                     logger.info(f"Filtered to {len(filtered)} aircraft within criteria")
                     
+                    # Log first-time spotted aircraft
+                    for aircraft in filtered:
+                        icao = aircraft['icao24']
+                        if icao not in self.spotted_aircraft:
+                            self.spotted_aircraft.add(icao)
+                            logger.info(f"FIRST SPOTTED: {icao} (callsign: {aircraft.get('callsign', 'N/A')}) "
+                                      f"at {aircraft['distance_km']:.1f}km, altitude: {aircraft['baro_altitude']}m")
+                    
                     # Find visible aircraft
                     visible = [a for a in filtered if is_visible(a)]
                     logger.info(f"Found {len(visible)} visible aircraft (elevation > {MIN_ELEVATION_ANGLE}°)")
+                    
+                    # Log first-time visible aircraft
+                    for aircraft in visible:
+                        icao = aircraft['icao24']
+                        if icao not in self.visible_aircraft:
+                            self.visible_aircraft.add(icao)
+                            logger.info(f"FIRST VISIBLE: {icao} (callsign: {aircraft.get('callsign', 'N/A')}) "
+                                      f"at {aircraft['distance_km']:.1f}km, elevation: {aircraft['elevation_angle']:.1f}°")
                     
                     # Send list of all approaching aircraft for dashboard
                     if filtered:
