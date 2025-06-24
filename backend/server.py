@@ -225,14 +225,30 @@ class AircraftTracker:
                     best_aircraft = select_best_plane(visible)
                     
                     if best_aircraft:
-                        # Format and broadcast message
+                        # Format message with all visible aircraft
                         message = self.format_aircraft_message(best_aircraft)
+                        
+                        # Add all visible aircraft to the message
+                        all_visible_formatted = []
+                        for aircraft in visible:
+                            formatted = self.format_aircraft_message(aircraft)
+                            all_visible_formatted.append(formatted)
+                        
+                        # Sort by distance
+                        all_visible_formatted.sort(key=lambda x: x['distance_km'])
+                        
+                        # Update message to include all aircraft
+                        message['type'] = 'aircraft_update'
+                        message['closest'] = message.copy()
+                        message['all_aircraft'] = all_visible_formatted
+                        
                         await self.broadcast_message(message)
                         
                         # Log event
                         logger.info(f"Sent aircraft update: {best_aircraft['icao24']} "
                                   f"at {best_aircraft['distance_km']:.1f}km, "
-                                  f"{best_aircraft['elevation_angle']:.1f}° elevation")
+                                  f"{best_aircraft['elevation_angle']:.1f}° elevation "
+                                  f"(total visible: {len(visible)})")
                         
                         # Store last aircraft data
                         self.last_aircraft_data = message

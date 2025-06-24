@@ -5,9 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Brum Brum">
+    <meta name="theme-color" content="#3b82f6">
     <title>Brum Brum Tracker</title>
     <link rel="stylesheet" href="style.css">
     <link rel="manifest" href="manifest.json">
+    
+    <!-- iOS PWA icons -->
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <link rel="apple-touch-icon" sizes="192x192" href="icon-192.png">
+    <link rel="apple-touch-icon" sizes="512x512" href="icon-512.png">
 </head>
 <body>
     <div id="app">
@@ -26,15 +33,22 @@
         <div id="main-display">
             <!-- Direction Arrow Container -->
             <div id="arrow-container">
-                <img id="direction-arrow" src="arrow.svg" alt="Direction Arrow">
+                <div id="arrow-animator"> 
+                    <img id="direction-arrow" src="arrow.svg" alt="Direction Arrow">
+                </div>
                 <div id="distance-display" class="info-badge">-- km</div>
                 <div id="compass-indicator" class="compass-status">Compass: Off</div>
             </div>
 
             <!-- Aircraft Image -->
             <div id="aircraft-container">
-                <img id="plane-image" src="plane-placeholder.svg" alt="Aircraft">
+                <div id="aircraft-stack">
+                    <img id="plane-image" src="plane-placeholder.svg" alt="Aircraft">
+                </div>
                 <div id="callsign-display" class="callsign">--</div>
+                <div id="aircraft-count" class="aircraft-count hidden">
+                    <span id="count-number">0</span> Nearby aircraft
+                </div>
             </div>
 
             <!-- Flight Information -->
@@ -60,8 +74,12 @@
             <p id="no-aircraft-subtitle">Searching for aircraft overhead</p>
         </div>
 
-        <!-- Audio Element -->
-        <audio id="brum-sound" src="brum.mp3" preload="auto"></audio>
+        <!-- Audio Elements -->
+        <audio id="atc-sound-1" src="assets/air-traffic-control-radio-voice-clip-adult-male-control-flight-022-approach_zyZL6Y4d_NWM.mp3" preload="auto"></audio>
+        <audio id="atc-sound-2" src="assets/air-traffic-control-radio-voice-clip-adult-male-control-flight-019-2-mile-n_GkuBTK4d_NWM.mp3" preload="auto"></audio>
+        <audio id="atc-sound-3" src="assets/air-traffic-control-radio-voice-clip-adult-male-control-flight-807-maintain_MySHaFN__NWM.mp3" preload="auto"></audio>
+        <audio id="atc-sound-4" src="assets/air-traffic-control-voice-clip-adult-male-50-airline-control-flight-022-mai_zyBH6F4O_NWM.mp3" preload="auto"></audio>
+        <audio id="atc-sound-5" src="assets/air-traffic-control-radio-voice-clip-adult-male-control-flight-022-turn-rig_G1SUaYVd_NWM.mp3" preload="auto"></audio>
     </div>
 
     <script src="main.js"></script>

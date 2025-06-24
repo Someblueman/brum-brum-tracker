@@ -78,6 +78,11 @@ body {
     margin-bottom: 40px; /* Add margin to prevent overlap */
 }
 
+#arrow-animator {
+    width: 100%;
+    height: 100%;
+}
+
 #direction-arrow {
     width: 100%;
     height: 100%;
@@ -105,9 +110,19 @@ body {
     width: 300px;
     height: 200px;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
     margin-top: 10px; /* Add margin to ensure callsign has space */
+}
+
+#aircraft-stack {
+    position: relative;
+    width: 100%;
+    height: 160px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 #plane-image {
@@ -116,6 +131,30 @@ body {
     object-fit: contain;
     border-radius: 10px;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    position: relative;
+    z-index: 10;
+}
+
+.stacked-aircraft {
+    position: absolute;
+    max-width: 90%;
+    max-height: 90%;
+    object-fit: contain;
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    opacity: 0.6;
+}
+
+.stacked-aircraft:nth-child(2) {
+    transform: translate(15px, 15px);
+}
+
+.stacked-aircraft:nth-child(3) {
+    transform: translate(30px, 30px);
+}
+
+.stacked-aircraft:nth-child(4) {
+    transform: translate(45px, 45px);
 }
 
 #callsign-display {
@@ -130,6 +169,20 @@ body {
     font-weight: bold;
     white-space: nowrap; /* Prevent text wrapping */
     z-index: 10; /* Ensure it stays on top */
+}
+
+.aircraft-count {
+    background: rgba(59, 130, 246, 0.9);
+    color: white;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    margin-top: 10px;
+}
+
+.aircraft-count.hidden {
+    display: none;
 }
 
 /* Flight Information */
@@ -198,8 +251,8 @@ body {
     line-height: 1.5;
 }
 
-/* Glow Animation */
-.glow {
+/* Glow Animation on the wrapper */
+#arrow-animator.glow {
     animation: pulse-glow 2s ease-in-out infinite;
 }
 

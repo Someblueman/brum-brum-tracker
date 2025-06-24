@@ -3,6 +3,29 @@
  * Handles WebSocket connection, device orientation, and UI updates
  */
 
+// Register Service Worker
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/service-worker.js')
+            .then(registration => {
+                console.log('Service Worker registered:', registration);
+                
+                // Handle updates
+                registration.addEventListener('updatefound', () => {
+                    const newWorker = registration.installing;
+                    newWorker.addEventListener('statechange', () => {
+                        if (newWorker.state === 'activated') {
+                            console.log('Service Worker updated');
+                        }
+                    });
+                });
+            })
+            .catch(error => {
+                console.error('Service Worker registration failed:', error);
+            });
+    });
+}
+
 // Configuration
 // Use WSS when page is served over HTTPS, WS otherwise
 const WEBSOCKET_PROTOCOL = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -23,6 +46,7 @@ const RECONNECT_CONFIG = {
 let websocket = null;
 let deviceHeading = 0;
 let currentAircraft = null;
+let allAircraft = [];  // Track all nearby aircraft
 let glowTimeout = null;
 let reconnectTimeout = null;
 let reconnectAttempts = 0;
@@ -36,14 +60,24 @@ const elements = {
     statusText: document.querySelector('.status-text'),
     mainDisplay: document.getElementById('main-display'),
     noAircraft: document.getElementById('no-aircraft'),
+    arrowAnimator: document.getElementById('arrow-animator'), // Add this line
     directionArrow: document.getElementById('direction-arrow'),
     planeImage: document.getElementById('plane-image'),
+    aircraftStack: document.getElementById('aircraft-stack'),
+    aircraftCount: document.getElementById('aircraft-count'),
+    countNumber: document.getElementById('count-number'),
     distanceDisplay: document.getElementById('distance-display'),
     callsignDisplay: document.getElementById('callsign-display'),
     altitudeDisplay: document.getElementById('altitude-display'),
     speedDisplay: document.getElementById('speed-display'),
     typeDisplay: document.getElementById('type-display'),
-    brumSound: document.getElementById('brum-sound'),
+    atcSounds: [
+        document.getElementById('atc-sound-1'),
+        document.getElementById('atc-sound-2'),
+        document.getElementById('atc-sound-3'),
+        document.getElementById('atc-sound-4'),
+        document.getElementById('atc-sound-5')
+    ],
     compassIndicator: document.getElementById('compass-indicator')
 };
 
@@ -169,7 +203,7 @@ function handleMessage(data) {
             break;
             
         case 'aircraft_update':
-            updateAircraftDisplay(data);
+            handleAircraftUpdate(data);
             break;
             
         case 'no_aircraft':
@@ -179,6 +213,26 @@ function handleMessage(data) {
         default:
             console.log('Unknown message type:', data.type);
     }
+}
+
+/**
+ * Handle aircraft update message
+ */
+function handleAircraftUpdate(data) {
+    // Store all aircraft data
+    if (data.all_aircraft) {
+        allAircraft = data.all_aircraft;
+    } else {
+        // Fallback for backward compatibility
+        allAircraft = [data];
+    }
+    
+    // Display the closest aircraft
+    const closestAircraft = data.closest || data;
+    updateAircraftDisplay(closestAircraft);
+    
+    // Update stack display
+    updateAircraftStack();
 }
 
 /**
@@ -212,10 +266,44 @@ function updateAircraftDisplay(aircraft) {
 }
 
 /**
- * Show no aircraft message
+ * Update the stacked aircraft display
  */
+function updateAircraftStack() {
+    const stackContainer = elements.aircraftStack;
+    
+    // Clear existing stack images (except the main one)
+    const existingStacks = stackContainer.querySelectorAll('.stacked-aircraft');
+    existingStacks.forEach(img => img.remove());
+    
+    // Update aircraft count
+    if (allAircraft.length > 1) {
+        elements.aircraftCount.classList.remove('hidden');
+        elements.countNumber.textContent = allAircraft.length;
+        
+        // Add stacked images for other aircraft (up to 3 more)
+        const maxStacked = Math.min(allAircraft.length - 1, 3);
+        for (let i = 1; i <= maxStacked; i++) {
+            const aircraft = allAircraft[i];
+            if (aircraft && aircraft.image_url) {
+                const stackImg = document.createElement('img');
+                stackImg.className = 'stacked-aircraft';
+                stackImg.src = aircraft.image_url;
+                stackImg.alt = `Aircraft ${i + 1}`;
+                stackImg.style.zIndex = 5 - i;
+                stackContainer.appendChild(stackImg);
+            }
+        }
+    } else {
+        elements.aircraftCount.classList.add('hidden');
+    }
+}
+
+/**
+ * Show no aircraft message
+ * */
 function showNoAircraft(connecting = false) {
     currentAircraft = null;
+    allAircraft = [];
     elements.mainDisplay.classList.add('hidden');
     elements.noAircraft.classList.remove('hidden');
     
@@ -238,9 +326,10 @@ function showNoAircraft(connecting = false) {
 
 /**
  * Show searching message
- */
+ * */
 function showSearching() {
     currentAircraft = null;
+    allAircraft = [];
     elements.mainDisplay.classList.add('hidden');
     elements.noAircraft.classList.remove('hidden');
     
@@ -278,18 +367,21 @@ function updateArrowRotation(planeBearing) {
  * Play notification sound and add glow effect
  */
 function playNotification() {
-    // Play sound
-    elements.brumSound.play().catch(error => {
+    // Play random ATC sound
+    const randomIndex = Math.floor(Math.random() * elements.atcSounds.length);
+    const selectedSound = elements.atcSounds[randomIndex];
+    
+    selectedSound.play().catch(error => {
         console.log('Could not play sound:', error);
     });
     
-    // Add glow effect
-    elements.directionArrow.classList.add('glow');
+    // Add glow effect TO THE WRAPPER
+    elements.arrowAnimator.classList.add('glow'); // Change this line
     
     // Remove glow after duration
     clearTimeout(glowTimeout);
     glowTimeout = setTimeout(() => {
-        elements.directionArrow.classList.remove('glow');
+        elements.arrowAnimator.classList.remove('glow'); // and this line
     }, GLOW_DURATION);
 }
 
