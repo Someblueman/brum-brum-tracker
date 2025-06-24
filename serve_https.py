@@ -47,49 +47,51 @@ class CORSRequestHandler(http.server.SimpleHTTPRequestHandler):
         print(f"{self.address_string()} - {format % args}")
 
 
-def generate_self_signed_cert():
-    """Generate a self-signed certificate if it doesn't exist."""
+def check_mkcert_certificates():
+    """Check if mkcert certificates exist, provide instructions if not."""
     if not os.path.exists(CERT_FILE) or not os.path.exists(KEY_FILE):
-        print("\nGenerating self-signed certificate...")
-        import subprocess
-        
-        # Generate self-signed certificate
-        cmd = [
-            'openssl', 'req', '-x509', '-newkey', 'rsa:4096',
-            '-keyout', KEY_FILE, '-out', CERT_FILE,
-            '-days', '365', '-nodes',
-            '-subj', '/CN=localhost'
-        ]
-        
-        try:
-            subprocess.run(cmd, check=True, capture_output=True)
-            print(f"Certificate generated: {CERT_FILE}")
-            print(f"Private key generated: {KEY_FILE}")
-        except subprocess.CalledProcessError as e:
-            print(f"Failed to generate certificate: {e}")
-            print("Please install OpenSSL or generate certificate manually:")
-            print("openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365 -nodes")
-            sys.exit(1)
-        except FileNotFoundError:
-            print("OpenSSL not found. Please install it or generate certificate manually:")
-            print("openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365 -nodes")
-            sys.exit(1)
+        print("\n⚠️  Certificate files not found!")
+        print("\nTo generate certificates using mkcert:")
+        print("1. Install mkcert:")
+        print("   - macOS: brew install mkcert")
+        print("   - Linux: Check your package manager or download from GitHub")
+        print("   - Windows: Use Chocolatey or Scoop")
+        print("\n2. Install the root certificate (optional but recommended):")
+        print("   mkcert -install")
+        print("\n3. Generate certificates:")
+        print("   mkcert -cert-file cert.pem -key-file key.pem localhost 127.0.0.1 ::1 [your-local-ip]")
+        print("\n4. Or run the provided setup script:")
+        print("   ./setup_mkcert.sh")
+        print("\nAlternatively, you can generate a self-signed certificate with:")
+        print("openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365 -nodes")
+        sys.exit(1)
 
 
 def main():
     """Start the HTTPS server."""
-    # Generate certificate if needed
-    generate_self_signed_cert()
+    # Check for certificates
+    check_mkcert_certificates()
     
     print(f"\nStarting HTTPS frontend server on https://{FRONTEND_HOST}:{HTTPS_PORT}")
     print(f"Serving files from: {os.path.abspath('frontend')}")
-    print("\n⚠️  IMPORTANT: You will see a certificate warning in your browser.")
-    print("   This is normal for self-signed certificates.")
-    print("   Click 'Advanced' and 'Proceed' to continue.")
-    print("\n📱 For iPad/iPhone:")
-    print("   1. Open https://[your-computer-ip]:8443 in Safari")
-    print("   2. Accept the certificate warning")
-    print("   3. The compass should work after granting permission")
+    
+    # Check if using mkcert certificates
+    try:
+        with open(CERT_FILE, 'r') as f:
+            cert_content = f.read()
+            if 'mkcert' in cert_content:
+                print("\n✅ Using mkcert certificates - should be trusted automatically!")
+                print("   (If you haven't run 'mkcert -install', you may still see warnings)")
+            else:
+                print("\n⚠️  Using self-signed certificates - you will see security warnings.")
+                print("   Click 'Advanced' and 'Proceed' to continue.")
+    except:
+        pass
+    
+    print("\n📱 For PWA installation:")
+    print("   1. Open https://[your-computer-ip]:8443 in Safari (iOS) or Chrome (Android)")
+    print("   2. For iOS: Tap Share button → Add to Home Screen")
+    print("   3. For Android: Tap menu → Install app")
     print("\nMake sure the backend WebSocket server is also running!")
     print("Backend should be started with: python backend/app.py")
     print("\nPress Ctrl+C to stop the server\n")
