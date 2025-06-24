@@ -345,18 +345,21 @@ function showSearching() {
 }
 
 /**
- * Update arrow rotation based on bearing and device heading
+ * Update arrow rotation to point TOWARD the aircraft location
+ * This helps users (especially children) know where to look in the sky
  */
 function updateArrowRotation(planeBearing) {
     let rotation;
     
     if (hasOrientationPermission && deviceHeading !== 0) {
         // Calculate final rotation: plane bearing - device heading
-        rotation = planeBearing - deviceHeading;
-        console.log(`Arrow rotation: bearing(${planeBearing}) - heading(${deviceHeading}) = ${rotation}`);
+        // Add 180 to flip the arrow to point TOWARD the plane instead of away from it
+        rotation = (planeBearing - deviceHeading + 180) % 360;
+        console.log(`Arrow rotation: bearing(${planeBearing}) - heading(${deviceHeading}) + 180 = ${rotation}`);
     } else {
         // No device orientation available, just show bearing from north
-        rotation = planeBearing;
+        // Add 180 to flip the arrow to point TOWARD the plane
+        rotation = (planeBearing + 180) % 360;
         console.log(`No device orientation, showing bearing: ${rotation}`);
     }
 
