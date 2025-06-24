@@ -53,6 +53,12 @@ let reconnectAttempts = 0;
 let hasOrientationPermission = false;
 let isIOS = false;
 let compassSupported = false;
+let seenAircraft = new Set(); // Track aircraft that have already played sound
+
+// Smoothing for compass readings
+const headingHistory = [];
+const HEADING_HISTORY_SIZE = 5; // Keep last 5 readings
+const HEADING_UPDATE_THRESHOLD = 2; // Only update if change > 2 degrees
 
 // DOM Elements
 const elements = {
@@ -261,8 +267,16 @@ function updateAircraftDisplay(aircraft) {
     // Update arrow rotation
     updateArrowRotation(aircraft.bearing);
     
-    // Play sound and add glow effect
-    playNotification();
+    // Check if this is a new aircraft (not seen before)
+    const aircraftId = aircraft.icao24;
+    if (!seenAircraft.has(aircraftId)) {
+        // First time seeing this aircraft - play sound and add glow effect
+        seenAircraft.add(aircraftId);
+        playNotification();
+        console.log(`New aircraft detected: ${aircraftId} - playing sound`);
+    } else {
+        console.log(`Aircraft ${aircraftId} already seen - not playing sound`);
+    }
 }
 
 /**
@@ -307,6 +321,13 @@ function showNoAircraft(connecting = false) {
     elements.mainDisplay.classList.add('hidden');
     elements.noAircraft.classList.remove('hidden');
     
+    // Clear seen aircraft when no aircraft are visible
+    // This allows sound to play again when aircraft return
+    if (seenAircraft.size > 0) {
+        console.log(`Clearing ${seenAircraft.size} seen aircraft from memory`);
+        seenAircraft.clear();
+    }
+    
     // Update message based on connection state
     const titleElement = document.getElementById('no-aircraft-title');
     const subtitleElement = document.getElementById('no-aircraft-subtitle');
@@ -333,6 +354,12 @@ function showSearching() {
     elements.mainDisplay.classList.add('hidden');
     elements.noAircraft.classList.remove('hidden');
     
+    // Clear seen aircraft when searching
+    if (seenAircraft.size > 0) {
+        console.log(`Clearing ${seenAircraft.size} seen aircraft from memory`);
+        seenAircraft.clear();
+    }
+    
     const titleElement = document.getElementById('no-aircraft-title');
     const subtitleElement = document.getElementById('no-aircraft-subtitle');
     
@@ -353,13 +380,13 @@ function updateArrowRotation(planeBearing) {
     
     if (hasOrientationPermission && deviceHeading !== 0) {
         // Calculate final rotation: plane bearing - device heading
-        // Add 180 to flip the arrow to point TOWARD the plane instead of away from it
-        rotation = (planeBearing - deviceHeading + 180) % 360;
-        console.log(`Arrow rotation: bearing(${planeBearing}) - heading(${deviceHeading}) + 180 = ${rotation}`);
+        // planeBearing is already FROM home TO aircraft, so no need to add 180
+        rotation = (planeBearing - deviceHeading + 360) % 360;
+        console.log(`Arrow rotation: bearing(${planeBearing}) - heading(${deviceHeading}) = ${rotation}`);
     } else {
         // No device orientation available, just show bearing from north
-        // Add 180 to flip the arrow to point TOWARD the plane
-        rotation = (planeBearing + 180) % 360;
+        // planeBearing already points TO the aircraft
+        rotation = planeBearing;
         console.log(`No device orientation, showing bearing: ${rotation}`);
     }
 
@@ -525,14 +552,43 @@ async function requestOrientationPermission() {
 }
 
 /**
+ * Smooth compass heading using moving average
+ */
+function smoothHeading(newHeading) {
+    // Add to history
+    headingHistory.push(newHeading);
+    
+    // Keep only recent readings
+    if (headingHistory.length > HEADING_HISTORY_SIZE) {
+        headingHistory.shift();
+    }
+    
+    // Calculate circular mean (handles 359->0 wrap-around)
+    let sinSum = 0;
+    let cosSum = 0;
+    
+    headingHistory.forEach(heading => {
+        const rad = heading * Math.PI / 180;
+        sinSum += Math.sin(rad);
+        cosSum += Math.cos(rad);
+    });
+    
+    let avgHeading = Math.atan2(sinSum, cosSum) * 180 / Math.PI;
+    if (avgHeading < 0) avgHeading += 360;
+    
+    return avgHeading;
+}
+
+/**
  * Handle device orientation changes
  */
 function handleOrientation(event) {
+    let rawHeading;
+    
     // More robust handling for different devices
     if (event.webkitCompassHeading !== undefined && event.webkitCompassHeading !== null) {
         // iOS devices with compass - webkitCompassHeading gives absolute heading
-        deviceHeading = event.webkitCompassHeading;
-        console.log('iOS compass heading:', deviceHeading);
+        rawHeading = event.webkitCompassHeading;
         
         if (!compassSupported) {
             compassSupported = true;
@@ -545,8 +601,7 @@ function handleOrientation(event) {
     } else if (event.alpha !== null && event.alpha !== undefined) {
         // Android devices or iOS without compass
         // Alpha is rotation around Z-axis (0-360)
-        deviceHeading = (360 - event.alpha) % 360;
-        console.log('Device alpha:', event.alpha, 'Calculated heading:', deviceHeading);
+        rawHeading = (360 - event.alpha) % 360;
         
         if (!compassSupported) {
             compassSupported = true;
@@ -561,9 +616,21 @@ function handleOrientation(event) {
         return;
     }
     
-    // Update arrow if we have current aircraft
-    if (currentAircraft) {
-        updateArrowRotation(currentAircraft.bearing);
+    // Apply smoothing
+    const smoothedHeading = smoothHeading(rawHeading);
+    
+    // Only update if change is significant
+    const headingChange = Math.abs(smoothedHeading - deviceHeading);
+    const minChange = Math.min(headingChange, 360 - headingChange); // Handle wrap-around
+    
+    if (minChange > HEADING_UPDATE_THRESHOLD || deviceHeading === 0) {
+        deviceHeading = smoothedHeading;
+        console.log(`Heading updated: raw=${rawHeading.toFixed(1)}°, smoothed=${smoothedHeading.toFixed(1)}°`);
+        
+        // Update arrow if we have current aircraft
+        if (currentAircraft) {
+            updateArrowRotation(currentAircraft.bearing);
+        }
     }
 }
 

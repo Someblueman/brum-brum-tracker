@@ -32,8 +32,12 @@ class AircraftDatabase:
     
     def _connect(self) -> None:
         """Establish database connection."""
-        self.connection = sqlite3.connect(self.db_path)
+        # Enable WAL mode for better concurrent access
+        self.connection = sqlite3.connect(self.db_path, timeout=30.0, check_same_thread=False)
         self.connection.row_factory = sqlite3.Row
+        # Enable Write-Ahead Logging for better concurrency
+        self.connection.execute("PRAGMA journal_mode=WAL")
+        self.connection.execute("PRAGMA busy_timeout=30000")
     
     def create_tables(self) -> None:
         """Create the aircraft cache table if it doesn't exist."""
@@ -107,21 +111,13 @@ class AircraftDatabase:
 
 
 # Module-level functions for backwards compatibility
-_db_instance = None
-
-
-def get_db() -> AircraftDatabase:
-    """Get or create database instance."""
-    global _db_instance
-    if _db_instance is None:
-        _db_instance = AircraftDatabase()
-    return _db_instance
+# Note: We no longer keep a global instance to avoid connection issues
 
 
 def create_tables() -> None:
     """Create database tables."""
-    db = get_db()
-    db.create_tables()
+    with AircraftDatabase() as db:
+        db.create_tables()
 
 
 def get_aircraft_from_cache(icao24: str) -> Optional[Dict[str, Any]]:
@@ -134,8 +130,8 @@ def get_aircraft_from_cache(icao24: str) -> Optional[Dict[str, Any]]:
     Returns:
         Aircraft data dictionary or None
     """
-    db = get_db()
-    return db.get_aircraft_from_cache(icao24)
+    with AircraftDatabase() as db:
+        return db.get_aircraft_from_cache(icao24)
 
 
 def save_aircraft_to_cache(record: Dict[str, Any]) -> None:
@@ -145,5 +141,5 @@ def save_aircraft_to_cache(record: Dict[str, Any]) -> None:
     Args:
         record: Aircraft data dictionary
     """
-    db = get_db()
-    db.save_aircraft_to_cache(record)
+    with AircraftDatabase() as db:
+        db.save_aircraft_to_cache(record)
