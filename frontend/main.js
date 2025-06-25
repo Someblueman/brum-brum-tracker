@@ -3,6 +3,13 @@
  * Handles WebSocket connection, device orientation, and UI updates
  */
 
+// Map configuration - matches backend constants
+const HOME_LAT = 51.2792;
+const HOME_LON = 1.2836;
+
+// Initialize map
+let map = null;
+
 // Register Service Worker
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
@@ -54,6 +61,7 @@ let hasOrientationPermission = false;
 let isIOS = false;
 let compassSupported = false;
 let seenAircraft = new Set(); // Track aircraft that have already played sound
+let aircraftLastSeen = new Map(); // Track when each aircraft was last seen
 
 // Smoothing for compass readings
 const headingHistory = [];
@@ -91,6 +99,9 @@ const elements = {
  * Initialize the application
  */
 function init() {
+    // Skip map initialization - removed due to cross-browser issues
+    // initializeMap();
+    
     // Detect iOS
     isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
     
@@ -119,7 +130,8 @@ function setupWebSocket() {
         websocket = new WebSocket(WEBSOCKET_URL);
         
         websocket.onopen = () => {
-            console.log('✅ WebSocket connected successfully!');
+            const timestamp = new Date().toISOString();
+            console.log(`WEBSOCKET CONNECTED: ${timestamp} (attempt #${reconnectAttempts + 1})`);
             updateConnectionStatus('connected');
             clearTimeout(reconnectTimeout);
             reconnectAttempts = 0; // Reset attempts on successful connection
@@ -142,7 +154,8 @@ function setupWebSocket() {
         };
         
         websocket.onclose = (event) => {
-            console.log(`🔌 WebSocket disconnected. Code: ${event.code}, Reason: ${event.reason}`);
+            const timestamp = new Date().toISOString();
+            console.log(`WEBSOCKET DISCONNECTED: ${timestamp} - Code: ${event.code}, Reason: ${event.reason || 'none'}`);
             updateConnectionStatus('disconnected');
             
             // Clean up the WebSocket reference
@@ -267,16 +280,26 @@ function updateAircraftDisplay(aircraft) {
     // Update arrow rotation
     updateArrowRotation(aircraft.bearing);
     
-    // Check if this is a new aircraft (not seen before)
+    // Check if this is a new aircraft (not seen before) or hasn't been seen in 5 minutes
     const aircraftId = aircraft.icao24;
-    if (!seenAircraft.has(aircraftId)) {
-        // First time seeing this aircraft - play sound and add glow effect
+    const now = Date.now();
+    const lastSeen = aircraftLastSeen.get(aircraftId);
+    const fiveMinutes = 5 * 60 * 1000; // 5 minutes in milliseconds
+    
+    if (!seenAircraft.has(aircraftId) || (lastSeen && now - lastSeen > fiveMinutes)) {
+        // First time seeing this aircraft OR hasn't been seen in 5 minutes
         seenAircraft.add(aircraftId);
+        const reason = !lastSeen ? 'FIRST TIME' : 'RETURNED (>5min)';
+        console.log(`AIRCRAFT EVENT: ${reason} - ${aircraftId} (${aircraft.callsign || 'no callsign'}) ` +
+                   `at ${aircraft.distance_km}km, ${aircraft.elevation_angle}° elevation`);
         playNotification();
-        console.log(`New aircraft detected: ${aircraftId} - playing sound`);
     } else {
-        console.log(`Aircraft ${aircraftId} already seen - not playing sound`);
+        const timeSince = Math.round((now - lastSeen) / 1000);
+        console.log(`AIRCRAFT UPDATE: ${aircraftId} seen ${timeSince}s ago - no sound`);
     }
+    
+    // Update last seen time
+    aircraftLastSeen.set(aircraftId, now);
 }
 
 /**
@@ -321,12 +344,8 @@ function showNoAircraft(connecting = false) {
     elements.mainDisplay.classList.add('hidden');
     elements.noAircraft.classList.remove('hidden');
     
-    // Clear seen aircraft when no aircraft are visible
-    // This allows sound to play again when aircraft return
-    if (seenAircraft.size > 0) {
-        console.log(`Clearing ${seenAircraft.size} seen aircraft from memory`);
-        seenAircraft.clear();
-    }
+    // Don't clear seen aircraft here - we want to remember them
+    // to prevent repeated audio when they briefly disappear
     
     // Update message based on connection state
     const titleElement = document.getElementById('no-aircraft-title');
@@ -354,11 +373,8 @@ function showSearching() {
     elements.mainDisplay.classList.add('hidden');
     elements.noAircraft.classList.remove('hidden');
     
-    // Clear seen aircraft when searching
-    if (seenAircraft.size > 0) {
-        console.log(`Clearing ${seenAircraft.size} seen aircraft from memory`);
-        seenAircraft.clear();
-    }
+    // Don't clear seen aircraft here - we want to remember them
+    // to prevent repeated audio when they briefly disappear
     
     const titleElement = document.getElementById('no-aircraft-title');
     const subtitleElement = document.getElementById('no-aircraft-subtitle');
@@ -378,7 +394,13 @@ function showSearching() {
 function updateArrowRotation(planeBearing) {
     let rotation;
     
-    if (hasOrientationPermission && deviceHeading !== 0) {
+    // When aircraft is very close/overhead, use flight track instead of bearing
+    if (currentAircraft && currentAircraft.distance_km < 3.0 && currentAircraft.elevation_angle > 60) {
+        // Aircraft is nearly overhead - arrow becomes less useful
+        // Could show flight direction instead, but for now just point up
+        console.log(`Aircraft overhead (${currentAircraft.distance_km}km, ${currentAircraft.elevation_angle}°) - arrow pointing up`);
+        rotation = 0; // Point north/up when overhead
+    } else if (hasOrientationPermission && deviceHeading !== 0) {
         // Calculate final rotation: plane bearing - device heading
         // planeBearing is already FROM home TO aircraft, so no need to add 180
         rotation = (planeBearing - deviceHeading + 360) % 360;
@@ -400,18 +422,28 @@ function playNotification() {
     // Play random ATC sound
     const randomIndex = Math.floor(Math.random() * elements.atcSounds.length);
     const selectedSound = elements.atcSounds[randomIndex];
+    const soundFile = selectedSound.src.split('/').pop();
     
-    selectedSound.play().catch(error => {
-        console.log('Could not play sound:', error);
-    });
+    console.log(`AUDIO: Attempting to play sound ${randomIndex + 1}/${elements.atcSounds.length}: ${soundFile}`);
+    
+    selectedSound.play()
+        .then(() => {
+            console.log(`AUDIO: Successfully played ${soundFile}`);
+        })
+        .catch(error => {
+            console.error(`AUDIO: Failed to play ${soundFile} - ${error.name}: ${error.message}`);
+            // Common errors: NotAllowedError (no user interaction), NotSupportedError (format issue)
+        });
     
     // Add glow effect TO THE WRAPPER
     elements.arrowAnimator.classList.add('glow'); // Change this line
+    console.log('UI: Added glow effect to arrow');
     
     // Remove glow after duration
     clearTimeout(glowTimeout);
     glowTimeout = setTimeout(() => {
         elements.arrowAnimator.classList.remove('glow'); // and this line
+        console.log('UI: Removed glow effect from arrow');
     }, GLOW_DURATION);
 }
 
@@ -673,6 +705,64 @@ function handleVisibilityChange() {
             reconnectAttempts = 0; // Reset attempts for immediate reconnection
             setupWebSocket();
         }
+    }
+}
+
+/**
+ * Initialize the Leaflet map
+ */
+function initializeMap() {
+    try {
+        // Apply opacity to map container
+        const mapContainer = document.getElementById('map');
+        if (mapContainer) {
+            mapContainer.style.opacity = '0.3';
+        }
+        
+        // Create map with all interactions disabled
+        map = L.map('map', {
+            center: [HOME_LAT, HOME_LON],
+            zoom: 12, // Zoomed out more for better area coverage
+            zoomControl: false,
+            dragging: false,
+            touchZoom: false,
+            scrollWheelZoom: false,
+            doubleClickZoom: false,
+            boxZoom: false,
+            keyboard: false,
+            tap: false,
+            tapTolerance: 0,
+            attributionControl: false
+        });
+        
+        // Add OpenStreetMap tile layer
+        const tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: ''
+        }).addTo(map);
+        
+        // Force opacity on the tile layer after it's added
+        setTimeout(() => {
+            const tilePane = map.getPanes().tilePane;
+            if (tilePane) {
+                tilePane.style.opacity = '0.3';
+            }
+            // Also set opacity on the layer itself
+            if (tileLayer._container) {
+                tileLayer._container.style.opacity = '0.3';
+            }
+        }, 100);
+        
+        // Disable all map interactions after initialization
+        if (map.dragging) map.dragging.disable();
+        if (map.touchZoom) map.touchZoom.disable();
+        if (map.doubleClickZoom) map.doubleClickZoom.disable();
+        if (map.scrollWheelZoom) map.scrollWheelZoom.disable();
+        if (map.boxZoom) map.boxZoom.disable();
+        if (map.keyboard) map.keyboard.disable();
+    } catch (error) {
+        console.error('Error initializing map:', error);
+        // Continue without map if it fails
     }
 }
 
