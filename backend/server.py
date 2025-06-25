@@ -18,7 +18,7 @@ from backend.opensky_client import (
     is_visible,
     select_best_plane
 )
-from backend.db import get_aircraft_from_cache
+from backend.db import get_aircraft_from_cache, add_to_logbook, get_logbook
 from backend.aircraft_data import get_aircraft_data
 from utils.constants import (
     WEBSOCKET_HOST,
@@ -53,37 +53,43 @@ def _simplify_aircraft_type(type_string: Optional[str]) -> str:
     Translates a technical aircraft type string into a simple, kid-friendly name.
     """
     if not type_string:
+        # This is the likely cause of the "Aircraft" classification.
+        # It means the API didn't provide a type string for this plane.
+        logger.warning("Received an empty aircraft type string. Returning default.")
         return "Aircraft"
 
     type_string_upper = type_string.upper()
 
-    # CORRECTED dictionary to be more flexible with Boeing codes.
+    # A dictionary to map technical codes to simple, recognizable names.
+    # The order is critical: most specific codes must come first.
     type_map = {
-        # Boeing (now without the 'B' prefix)
+        # Airbus (Specific before general)
+        "A21N": "Airbus A321neo",
+        "A20N": "Airbus A320neo",
+        "A38": "Airbus A380 'Superjumbo'",
+        "A35": "Airbus A350",
+        "A34": "Airbus A340",
+        "A33": "Airbus A330",
+        "A32": "Airbus A320", # General A320 family is checked last
+
+        # Boeing
         "787": "Boeing 787 Dreamliner",
         "777": "Boeing 777",
         "767": "Boeing 767",
         "747": "Boeing 747 'Jumbo Jet'",
-        "737": "Boeing 737",  # This will now correctly match "737NG..."
+        "737": "Boeing 737",
 
-        # Airbus
-        "A20N": "Airbus A320neo",
-        "A21N": "Airbus A321neo",
-        "A33": "Airbus A330",
-        "A34": "Airbus A340",
-        "A35": "Airbus A350",
-        "A38": "Airbus A380 'Superjumbo'",
-        "A32": "Airbus A320",
-
-        # Others
+        # Other common jets
         "E19": "Embraer E-Jet",
         "E17": "Embraer E-Jet",
-        "C172": "Cessna Skyhawk",
-        "C25C": "Cessna Citation",
-        "LEAR": "Learjet",
-        "GLF": "Gulfstream Jet",
+        "CRJ": "CRJ Jet",
         "BOMBARDIER": "Bombardier Jet",
-        "CRJ": "CRJ Jet"
+        "GLF": "Gulfstream Jet",
+        "LEAR": "Learjet",
+        "C25C": "Cessna Citation",
+        
+        # Smaller Aircraft
+        "C172": "Cessna Skyhawk",
     }
 
     for code, name in type_map.items():
@@ -95,9 +101,8 @@ def _simplify_aircraft_type(type_string: Optional[str]) -> str:
     if "AIRBUS" in type_string_upper: return "Airbus Aircraft"
     if "EMBRAER" in type_string_upper: return "Embraer Aircraft"
     
-    # A better final fallback
+    # Final fallback for anything else
     return "Prop Plane"
-
 
 class AircraftTracker:
     """Manages aircraft tracking and WebSocket connections."""
@@ -290,7 +295,14 @@ class AircraftTracker:
                         icao = aircraft['icao24']
                         if icao not in self.visible_aircraft:
                             self.visible_aircraft.add(icao)
-                            logger.info(f"FIRST VISIBLE: {icao} (callsign: {aircraft.get('callsign', 'N/A')}) "
+                            # Get formatted data to log
+                            formatted_plane = self.format_aircraft_message(aircraft)
+                            plane_type = formatted_plane['aircraft_type']
+                            image_url = formatted_plane['image_url']
+                            
+                            add_to_logbook(plane_type, image_url)
+
+                            logger.info(f"FIRST VISIBLE & LOGGED: {icao} ({plane_type}) "
                                       f"at {aircraft['distance_km']:.1f}km, elevation: {aircraft['elevation_angle']:.1f}°")
                     
                     # Send list of all approaching aircraft for dashboard
@@ -397,11 +409,21 @@ class AircraftTracker:
                     data = json.loads(message)
                     logger.debug(f"Received from client: {data}")
                     
-                    # Echo back for now
-                    await websocket.send(json.dumps({
-                        'type': 'echo',
-                        'data': data
-                    }))
+                    # ** ADD THIS BLOCK to handle logbook requests **
+                    if data.get('type') == 'get_logbook':
+                        log_data = get_logbook()
+                        response = {
+                            'type': 'logbook_data',
+                            'log': log_data
+                        }
+                        await websocket.send(json.dumps(response))
+                    else:
+                        # Echo back other messages for now
+                        await websocket.send(json.dumps({
+                            'type': 'echo',
+                            'data': data
+                        }))
+
                 except json.JSONDecodeError:
                     logger.error(f"Invalid JSON from client: {message}")
                     

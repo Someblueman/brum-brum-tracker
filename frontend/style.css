@@ -463,12 +463,22 @@ body {
     color: #718096;
 }
 
-/* Nav Button */
-#dashboard-link {
+#nav-container {
     position: fixed;
     top: 1rem;
     right: 1rem;
     z-index: 100;
+    display: flex;
+    gap: 10px;
+}
+
+/* Remove positioning from the individual button */
+#dashboard-link,
+#logbook-link {
+    /* position: fixed; <-- REMOVE */
+    /* top: 1rem; <-- REMOVE */
+    /* right: 1rem; <-- REMOVE */
+    /* z-index: 100; <-- REMOVE */
     padding: 0.5rem 1rem;
     background: #3b82f6;
     color: white;
@@ -477,6 +487,10 @@ body {
     font-weight: normal;
     font-size: 1rem;
     border: 3px solid white;
+}
+
+#logbook-link {
+    background: #FF6347;
 }
 
 /* Compass Indicator */

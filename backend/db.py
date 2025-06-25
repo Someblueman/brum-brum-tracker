@@ -5,7 +5,7 @@ Manages SQLite connection and aircraft image cache.
 
 import sqlite3
 import json
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from pathlib import Path
 
 
@@ -24,6 +24,7 @@ class AircraftDatabase:
         self._ensure_db_directory()
         self._connect()
         self.create_tables()
+        self.create_logbook_table()
     
     def _ensure_db_directory(self) -> None:
         """Ensure the database directory exists."""
@@ -51,6 +52,36 @@ class AircraftDatabase:
             )
         """)
         self.connection.commit()
+
+    def create_logbook_table(self) -> None:
+        """Create the logbook table if it doesn't exist."""
+        cursor = self.connection.cursor()
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS logbook (
+                aircraft_type TEXT PRIMARY KEY,
+                image_url TEXT,
+                first_spotted TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        self.connection.commit()
+
+    def add_to_logbook(self, aircraft_type: str, image_url: str) -> None:
+        """Add a new unique aircraft type to the logbook."""
+        cursor = self.connection.cursor()
+        cursor.execute("""
+            INSERT OR IGNORE INTO logbook (aircraft_type, image_url)
+            VALUES (?, ?)
+        """, (aircraft_type, image_url or ''))
+        self.connection.commit()
+
+    def get_logbook(self) -> List[Dict[str, Any]]:
+        """Retrieve all entries from the logbook, ordered by most recent."""
+        cursor = self.connection.cursor()
+        cursor.execute(
+            "SELECT * FROM logbook ORDER BY first_spotted DESC"
+        )
+        rows = cursor.fetchall()
+        return [dict(row) for row in rows]
     
     def get_aircraft_from_cache(self, icao24: str) -> Optional[Dict[str, Any]]:
         """
@@ -143,3 +174,13 @@ def save_aircraft_to_cache(record: Dict[str, Any]) -> None:
     """
     with AircraftDatabase() as db:
         db.save_aircraft_to_cache(record)
+
+def get_logbook() -> List[Dict[str, Any]]:
+    """Retrieve all logbook entries."""
+    with AircraftDatabase() as db:
+        return db.get_logbook()
+
+def add_to_logbook(aircraft_type: str, image_url: str) -> None:
+    """Add an entry to the logbook."""
+    with AircraftDatabase() as db:
+        db.add_to_logbook(aircraft_type, image_url)
