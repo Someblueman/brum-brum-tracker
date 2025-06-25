@@ -11,10 +11,12 @@ body {
     color: #333;
     overflow: hidden;
     height: 100vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    margin: 0;
+    padding: 0;
+    position: relative;
 }
+
+/* Removed map styles due to cross-browser compatibility issues */
 
 #app {
     width: 100%;
@@ -25,13 +27,15 @@ body {
     align-items: center;
     justify-content: center;
     padding: 20px;
+    z-index: 1;
+    pointer-events: auto;
 }
 
 /* Connection Status */
 #connection-status {
-    position: absolute;
+    position: fixed;
     top: 20px;
-    right: 20px;
+    left: 20px;
     display: flex;
     align-items: center;
     gap: 8px;
@@ -75,7 +79,8 @@ body {
     position: relative;
     width: 200px;
     height: 200px;
-    margin-bottom: 40px; /* Add margin to prevent overlap */
+    margin-bottom: 40px;
+    /* Add margin to prevent overlap */
 }
 
 #arrow-animator {
@@ -100,8 +105,10 @@ body {
     border-radius: 20px;
     font-size: 18px;
     font-weight: bold;
-    white-space: nowrap; /* Prevent text wrapping */
-    z-index: 10; /* Ensure it stays on top */
+    white-space: nowrap;
+    /* Prevent text wrapping */
+    z-index: 10;
+    /* Ensure it stays on top */
 }
 
 /* Aircraft Container */
@@ -113,7 +120,8 @@ body {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    margin-top: 10px; /* Add margin to ensure callsign has space */
+    margin-top: 10px;
+    /* Add margin to ensure callsign has space */
 }
 
 #aircraft-stack {
@@ -167,8 +175,10 @@ body {
     border-radius: 15px;
     font-size: 16px;
     font-weight: bold;
-    white-space: nowrap; /* Prevent text wrapping */
-    z-index: 10; /* Ensure it stays on top */
+    white-space: nowrap;
+    /* Prevent text wrapping */
+    z-index: 10;
+    /* Ensure it stays on top */
 }
 
 .aircraft-count {
@@ -189,10 +199,11 @@ body {
 #flight-info {
     display: flex;
     gap: 30px;
-    background: rgba(255, 255, 255, 0.9);
+    background: rgba(255, 255, 255, 0.95);
     padding: 20px 30px;
     border-radius: 15px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+    backdrop-filter: blur(10px);
 }
 
 .info-item {
@@ -261,10 +272,12 @@ body {
         transform: scale(1);
         filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1));
     }
+
     50% {
         transform: scale(1.05);
         filter: drop-shadow(0 0 20px rgba(255, 215, 0, 0.6));
     }
+
     100% {
         transform: scale(1);
         filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1));
@@ -277,18 +290,18 @@ body {
         width: 150px;
         height: 150px;
     }
-    
+
     #aircraft-container {
         width: 250px;
         height: 150px;
     }
-    
+
     #flight-info {
         flex-direction: row;
         gap: 20px;
         padding: 15px 20px;
     }
-    
+
     .info-value {
         font-size: 20px;
     }
@@ -296,7 +309,7 @@ body {
 
 /* Navigation Button */
 #dashboard-link {
-    position: absolute;
+    position: fixed;
     top: 1rem;
     right: 1rem;
     z-index: 100;
