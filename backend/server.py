@@ -48,6 +48,56 @@ logging.getLogger('backend.opensky_client').setLevel(logging.DEBUG)
 logging.getLogger('utils.geometry').setLevel(logging.DEBUG)
 logger = logging.getLogger(__name__)
 
+def _simplify_aircraft_type(type_string: Optional[str]) -> str:
+    """
+    Translates a technical aircraft type string into a simple, kid-friendly name.
+    """
+    if not type_string:
+        return "Aircraft"
+
+    type_string_upper = type_string.upper()
+
+    # CORRECTED dictionary to be more flexible with Boeing codes.
+    type_map = {
+        # Boeing (now without the 'B' prefix)
+        "787": "Boeing 787 Dreamliner",
+        "777": "Boeing 777",
+        "767": "Boeing 767",
+        "747": "Boeing 747 'Jumbo Jet'",
+        "737": "Boeing 737",  # This will now correctly match "737NG..."
+
+        # Airbus
+        "A20N": "Airbus A320neo",
+        "A21N": "Airbus A321neo",
+        "A33": "Airbus A330",
+        "A34": "Airbus A340",
+        "A35": "Airbus A350",
+        "A38": "Airbus A380 'Superjumbo'",
+        "A32": "Airbus A320",
+
+        # Others
+        "E19": "Embraer E-Jet",
+        "E17": "Embraer E-Jet",
+        "C172": "Cessna Skyhawk",
+        "C25C": "Cessna Citation",
+        "LEAR": "Learjet",
+        "GLF": "Gulfstream Jet",
+        "BOMBARDIER": "Bombardier Jet",
+        "CRJ": "CRJ Jet"
+    }
+
+    for code, name in type_map.items():
+        if code in type_string_upper:
+            return name
+
+    # If no specific match is found, try a general one
+    if "BOEING" in type_string_upper: return "Boeing Aircraft"
+    if "AIRBUS" in type_string_upper: return "Airbus Aircraft"
+    if "EMBRAER" in type_string_upper: return "Embraer Aircraft"
+    
+    # A better final fallback
+    return "Prop Plane"
+
 
 class AircraftTracker:
     """Manages aircraft tracking and WebSocket connections."""
@@ -73,6 +123,10 @@ class AircraftTracker:
             """
             # Get image data using scraper (checks cache first)
             media_data = get_aircraft_data(aircraft['icao24'])
+
+            # Gets both raw and simplified aircraft type for debugging
+            raw_type = media_data.get('type')
+            simple_type = _simplify_aircraft_type(raw_type)
             
             # Convert altitude from meters to feet
             altitude_ft = aircraft['baro_altitude'] * 3.28084 if aircraft['baro_altitude'] else 0
@@ -90,7 +144,8 @@ class AircraftTracker:
                 'altitude_ft': round(altitude_ft),
                 'speed_kmh': round(speed_kmh),
                 'elevation_angle': round(aircraft['elevation_angle'], 1),
-                'aircraft_type': media_data.get('type', ''),
+                'aircraft_type': simple_type,
+                'aircraft_type_raw': raw_type,
                 'image_url': media_data.get('image_url', '')
             }
             
@@ -129,6 +184,10 @@ class AircraftTracker:
                 
                 # Get image data using scraper (checks cache first)
                 media_data = get_aircraft_data(aircraft['icao24'])
+
+                # Gets both raw and simplified aircraft type for debugging
+                raw_type = media_data.get('type')
+                simple_type = _simplify_aircraft_type(raw_type)
                 
                 # Convert altitude and speed
                 altitude_ft = aircraft['baro_altitude'] * 3.28084 if aircraft['baro_altitude'] else 0
@@ -143,7 +202,8 @@ class AircraftTracker:
                     'speed_kmh': round(speed_kmh),
                     'eta_seconds': round(eta_seconds),
                     'eta_minutes': round(eta_seconds / 60, 1),
-                    'aircraft_type': media_data.get('type', ''),
+                    'aircraft_type': simple_type,
+                    'aircraft_type_raw': raw_type,
                 })
             
             # Sort by ETA (closest first)

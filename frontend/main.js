@@ -16,7 +16,7 @@ if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('/service-worker.js')
             .then(registration => {
                 console.log('Service Worker registered:', registration);
-                
+
                 // Handle updates
                 registration.addEventListener('updatefound', () => {
                     const newWorker = registration.installing;
@@ -74,7 +74,7 @@ const elements = {
     statusText: document.querySelector('.status-text'),
     mainDisplay: document.getElementById('main-display'),
     noAircraft: document.getElementById('no-aircraft'),
-    arrowAnimator: document.getElementById('arrow-animator'), // Add this line
+    arrowAnimator: document.getElementById('arrow-animator'),
     directionArrow: document.getElementById('direction-arrow'),
     planeImage: document.getElementById('plane-image'),
     aircraftStack: document.getElementById('aircraft-stack'),
@@ -92,28 +92,43 @@ const elements = {
         document.getElementById('atc-sound-4'),
         document.getElementById('atc-sound-5')
     ],
-    compassIndicator: document.getElementById('compass-indicator')
+    compassIndicator: document.getElementById('compass-indicator'),
+    startButton: document.getElementById('start-button'),
+    startOverlay: document.getElementById('start-overlay'),
+    appContainer: document.getElementById('app'),
+    unlockSound: document.getElementById('unlock-sound')
 };
 
 /**
  * Initialize the application
  */
 function init() {
-    // Skip map initialization - removed due to cross-browser issues
-    // initializeMap();
-    
+    // Initialize the background map
+    initializeMap();
+
     // Detect iOS
     isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-    
-    // Initialize UI state
-    showNoAircraft();
-    
-    setupWebSocket();
-    setupOrientationHandling();
-    
+
+    // Initial UI state is handled by the start overlay
+
+    // Setup the start button
+    elements.startButton.addEventListener('click', () => {
+        elements.startOverlay.style.display = 'none';
+        elements.appContainer.classList.remove('hidden');
+
+        // Unlock audio
+        elements.unlockSound.play().catch(e => console.error("Could not play unlock sound:", e));
+
+        // Start the main app logic
+        showSearching();
+        setupWebSocket();
+        setupOrientationHandling();
+    });
+
     // Handle visibility changes
     document.addEventListener('visibilitychange', handleVisibilityChange);
 }
+
 
 /**
  * Set up WebSocket connection
@@ -121,14 +136,14 @@ function init() {
 function setupWebSocket() {
     updateConnectionStatus('connecting');
     showNoAircraft(true);  // Show connecting message
-    
+
     console.log(`Protocol: ${window.location.protocol}`);
     console.log(`WebSocket URL: ${WEBSOCKET_URL}`);
     console.log(`Connection attempt #${reconnectAttempts + 1}`);
-    
+
     try {
         websocket = new WebSocket(WEBSOCKET_URL);
-        
+
         websocket.onopen = () => {
             const timestamp = new Date().toISOString();
             console.log(`WEBSOCKET CONNECTED: ${timestamp} (attempt #${reconnectAttempts + 1})`);
@@ -136,7 +151,7 @@ function setupWebSocket() {
             clearTimeout(reconnectTimeout);
             reconnectAttempts = 0; // Reset attempts on successful connection
         };
-        
+
         websocket.onmessage = (event) => {
             console.log('📨 Received message:', event.data);
             try {
@@ -146,25 +161,25 @@ function setupWebSocket() {
                 console.error('Failed to parse message:', error);
             }
         };
-        
+
         websocket.onerror = (error) => {
             console.error('❌ WebSocket error:', error);
             console.error('Check if backend is running on port', WEBSOCKET_PORT);
             updateConnectionStatus('error');
         };
-        
+
         websocket.onclose = (event) => {
             const timestamp = new Date().toISOString();
             console.log(`WEBSOCKET DISCONNECTED: ${timestamp} - Code: ${event.code}, Reason: ${event.reason || 'none'}`);
             updateConnectionStatus('disconnected');
-            
+
             // Clean up the WebSocket reference
             websocket = null;
-            
+
             // Schedule reconnection
             scheduleReconnect();
         };
-        
+
     } catch (error) {
         console.error('❌ Failed to create WebSocket:', error);
         updateConnectionStatus('error');
@@ -180,7 +195,7 @@ function calculateReconnectDelay() {
         RECONNECT_CONFIG.initialDelay * Math.pow(RECONNECT_CONFIG.decayFactor, reconnectAttempts),
         RECONNECT_CONFIG.maxDelay
     );
-    
+
     // Add jitter to prevent thundering herd
     const jitter = baseDelay * RECONNECT_CONFIG.jitterFactor * (Math.random() - 0.5);
     return Math.floor(baseDelay + jitter);
@@ -191,17 +206,17 @@ function calculateReconnectDelay() {
  */
 function scheduleReconnect() {
     clearTimeout(reconnectTimeout);
-    
+
     // Check if we've hit max retries (if configured)
     if (RECONNECT_CONFIG.maxRetries && reconnectAttempts >= RECONNECT_CONFIG.maxRetries) {
         console.error('Max reconnection attempts reached');
         updateConnectionStatus('error');
         return;
     }
-    
+
     const delay = calculateReconnectDelay();
     console.log(`Scheduling reconnection in ${delay}ms (attempt ${reconnectAttempts + 1})`);
-    
+
     reconnectTimeout = setTimeout(() => {
         reconnectAttempts++;
         setupWebSocket();
@@ -216,19 +231,19 @@ function handleMessage(data) {
         case 'welcome':
             console.log('Received welcome message');
             break;
-            
+
         case 'searching':
             showSearching();
             break;
-            
+
         case 'aircraft_update':
             handleAircraftUpdate(data);
             break;
-            
+
         case 'no_aircraft':
             showNoAircraft();
             break;
-            
+
         default:
             console.log('Unknown message type:', data.type);
     }
@@ -245,11 +260,11 @@ function handleAircraftUpdate(data) {
         // Fallback for backward compatibility
         allAircraft = [data];
     }
-    
+
     // Display the closest aircraft
     const closestAircraft = data.closest || data;
     updateAircraftDisplay(closestAircraft);
-    
+
     // Update stack display
     updateAircraftStack();
 }
@@ -260,44 +275,45 @@ function handleAircraftUpdate(data) {
 function updateAircraftDisplay(aircraft) {
     currentAircraft = aircraft;
 
-    
+
     // Show main display, hide no aircraft message
     elements.mainDisplay.classList.remove('hidden');
     elements.noAircraft.classList.add('hidden');
-    
+
     // Update aircraft information
     elements.distanceDisplay.textContent = `${aircraft.distance_km} km`;
     elements.callsignDisplay.textContent = aircraft.callsign || aircraft.icao24;
     elements.altitudeDisplay.textContent = `${aircraft.altitude_ft.toLocaleString()} ft`;
     elements.speedDisplay.textContent = `${Math.round(aircraft.speed_kmh)} km/h`;
     elements.typeDisplay.textContent = aircraft.aircraft_type || 'Unknown';
-    
+
+
     // Update aircraft image
     if (aircraft.image_url) {
         elements.planeImage.src = aircraft.image_url;
     }
-    
+
     // Update arrow rotation
     updateArrowRotation(aircraft.bearing);
-    
+
     // Check if this is a new aircraft (not seen before) or hasn't been seen in 5 minutes
     const aircraftId = aircraft.icao24;
     const now = Date.now();
     const lastSeen = aircraftLastSeen.get(aircraftId);
     const fiveMinutes = 5 * 60 * 1000; // 5 minutes in milliseconds
-    
+
     if (!seenAircraft.has(aircraftId) || (lastSeen && now - lastSeen > fiveMinutes)) {
         // First time seeing this aircraft OR hasn't been seen in 5 minutes
         seenAircraft.add(aircraftId);
         const reason = !lastSeen ? 'FIRST TIME' : 'RETURNED (>5min)';
         console.log(`AIRCRAFT EVENT: ${reason} - ${aircraftId} (${aircraft.callsign || 'no callsign'}) ` +
-                   `at ${aircraft.distance_km}km, ${aircraft.elevation_angle}° elevation`);
+            `at ${aircraft.distance_km}km, ${aircraft.elevation_angle}° elevation`);
         playNotification();
     } else {
         const timeSince = Math.round((now - lastSeen) / 1000);
         console.log(`AIRCRAFT UPDATE: ${aircraftId} seen ${timeSince}s ago - no sound`);
     }
-    
+
     // Update last seen time
     aircraftLastSeen.set(aircraftId, now);
 }
@@ -307,16 +323,16 @@ function updateAircraftDisplay(aircraft) {
  */
 function updateAircraftStack() {
     const stackContainer = elements.aircraftStack;
-    
+
     // Clear existing stack images (except the main one)
     const existingStacks = stackContainer.querySelectorAll('.stacked-aircraft');
     existingStacks.forEach(img => img.remove());
-    
+
     // Update aircraft count
     if (allAircraft.length > 1) {
         elements.aircraftCount.classList.remove('hidden');
         elements.countNumber.textContent = allAircraft.length;
-        
+
         // Add stacked images for other aircraft (up to 3 more)
         const maxStacked = Math.min(allAircraft.length - 1, 3);
         for (let i = 1; i <= maxStacked; i++) {
@@ -343,14 +359,14 @@ function showNoAircraft(connecting = false) {
     allAircraft = [];
     elements.mainDisplay.classList.add('hidden');
     elements.noAircraft.classList.remove('hidden');
-    
+
     // Don't clear seen aircraft here - we want to remember them
     // to prevent repeated audio when they briefly disappear
-    
+
     // Update message based on connection state
     const titleElement = document.getElementById('no-aircraft-title');
     const subtitleElement = document.getElementById('no-aircraft-subtitle');
-    
+
     if (connecting) {
         titleElement.textContent = 'Connecting...';
         subtitleElement.textContent = 'Establishing connection to aircraft tracker';
@@ -358,7 +374,7 @@ function showNoAircraft(connecting = false) {
         titleElement.textContent = 'Clear skies';
         subtitleElement.textContent = 'No aircraft visible overhead right now';
     }
-    
+
     // Remove glow effect
     clearTimeout(glowTimeout);
     elements.directionArrow.classList.remove('glow');
@@ -372,16 +388,16 @@ function showSearching() {
     allAircraft = [];
     elements.mainDisplay.classList.add('hidden');
     elements.noAircraft.classList.remove('hidden');
-    
+
     // Don't clear seen aircraft here - we want to remember them
     // to prevent repeated audio when they briefly disappear
-    
+
     const titleElement = document.getElementById('no-aircraft-title');
     const subtitleElement = document.getElementById('no-aircraft-subtitle');
-    
+
     titleElement.textContent = 'Scanning the skies...';
     subtitleElement.textContent = 'Looking for aircraft overhead';
-    
+
     // Remove glow effect
     clearTimeout(glowTimeout);
     elements.directionArrow.classList.remove('glow');
@@ -393,7 +409,7 @@ function showSearching() {
  */
 function updateArrowRotation(planeBearing) {
     let rotation;
-    
+
     // When aircraft is very close/overhead, use flight track instead of bearing
     if (currentAircraft && currentAircraft.distance_km < 3.0 && currentAircraft.elevation_angle > 60) {
         // Aircraft is nearly overhead - arrow becomes less useful
@@ -423,9 +439,9 @@ function playNotification() {
     const randomIndex = Math.floor(Math.random() * elements.atcSounds.length);
     const selectedSound = elements.atcSounds[randomIndex];
     const soundFile = selectedSound.src.split('/').pop();
-    
+
     console.log(`AUDIO: Attempting to play sound ${randomIndex + 1}/${elements.atcSounds.length}: ${soundFile}`);
-    
+
     selectedSound.play()
         .then(() => {
             console.log(`AUDIO: Successfully played ${soundFile}`);
@@ -434,11 +450,11 @@ function playNotification() {
             console.error(`AUDIO: Failed to play ${soundFile} - ${error.name}: ${error.message}`);
             // Common errors: NotAllowedError (no user interaction), NotSupportedError (format issue)
         });
-    
+
     // Add glow effect TO THE WRAPPER
     elements.arrowAnimator.classList.add('glow'); // Change this line
     console.log('UI: Added glow effect to arrow');
-    
+
     // Remove glow after duration
     clearTimeout(glowTimeout);
     glowTimeout = setTimeout(() => {
@@ -452,9 +468,9 @@ function playNotification() {
  */
 function setupOrientationHandling() {
     // Check if we need to request permission (iOS 13+)
-    if (typeof DeviceOrientationEvent !== 'undefined' && 
+    if (typeof DeviceOrientationEvent !== 'undefined' &&
         typeof DeviceOrientationEvent.requestPermission === 'function') {
-        
+
         // Create a button to request permission
         createOrientationButton();
     } else {
@@ -466,10 +482,10 @@ function setupOrientationHandling() {
                 elements.compassIndicator.style.color = '#ff9800';
             }
         }
-        
+
         // Try to add the listener
         window.addEventListener('deviceorientation', handleOrientation);
-        
+
         // Check if we're actually getting data after a delay
         setTimeout(() => {
             if (deviceHeading === 0) {
@@ -503,7 +519,7 @@ function createOrientationButton() {
         }
         return;
     }
-    
+
     const button = document.createElement('button');
     button.id = 'orientation-button';
     button.textContent = 'Enable Compass';
@@ -522,7 +538,7 @@ function createOrientationButton() {
         cursor: pointer;
         z-index: 1000;
     `;
-    
+
     button.addEventListener('click', requestOrientationPermission);
     document.body.appendChild(button);
 }
@@ -535,24 +551,24 @@ async function requestOrientationPermission() {
         console.log('Requesting device orientation permission...');
         const permission = await DeviceOrientationEvent.requestPermission();
         console.log('Permission response:', permission);
-        
+
         if (permission === 'granted') {
             window.addEventListener('deviceorientation', handleOrientation);
             hasOrientationPermission = true;
             console.log('Device orientation permission granted');
-            
+
             // Remove the button
             const button = document.getElementById('orientation-button');
             if (button) {
                 button.remove();
             }
-            
+
             // Update compass indicator
             if (elements.compassIndicator) {
                 elements.compassIndicator.textContent = 'Compass: On';
                 elements.compassIndicator.style.color = '#4CAF50';
             }
-            
+
             // Update arrow if we have current aircraft
             if (currentAircraft) {
                 updateArrowRotation(currentAircraft.bearing);
@@ -569,7 +585,7 @@ async function requestOrientationPermission() {
         console.error('Failed to get orientation permission:', error);
         // Try to add event listener anyway - some devices don't need permission
         window.addEventListener('deviceorientation', handleOrientation);
-        
+
         // Wait a bit to see if we get orientation data
         setTimeout(() => {
             if (deviceHeading === 0) {
@@ -589,25 +605,25 @@ async function requestOrientationPermission() {
 function smoothHeading(newHeading) {
     // Add to history
     headingHistory.push(newHeading);
-    
+
     // Keep only recent readings
     if (headingHistory.length > HEADING_HISTORY_SIZE) {
         headingHistory.shift();
     }
-    
+
     // Calculate circular mean (handles 359->0 wrap-around)
     let sinSum = 0;
     let cosSum = 0;
-    
+
     headingHistory.forEach(heading => {
         const rad = heading * Math.PI / 180;
         sinSum += Math.sin(rad);
         cosSum += Math.cos(rad);
     });
-    
+
     let avgHeading = Math.atan2(sinSum, cosSum) * 180 / Math.PI;
     if (avgHeading < 0) avgHeading += 360;
-    
+
     return avgHeading;
 }
 
@@ -616,12 +632,12 @@ function smoothHeading(newHeading) {
  */
 function handleOrientation(event) {
     let rawHeading;
-    
+
     // More robust handling for different devices
     if (event.webkitCompassHeading !== undefined && event.webkitCompassHeading !== null) {
         // iOS devices with compass - webkitCompassHeading gives absolute heading
         rawHeading = event.webkitCompassHeading;
-        
+
         if (!compassSupported) {
             compassSupported = true;
             hasOrientationPermission = true;
@@ -634,7 +650,7 @@ function handleOrientation(event) {
         // Android devices or iOS without compass
         // Alpha is rotation around Z-axis (0-360)
         rawHeading = (360 - event.alpha) % 360;
-        
+
         if (!compassSupported) {
             compassSupported = true;
             hasOrientationPermission = true;
@@ -647,18 +663,18 @@ function handleOrientation(event) {
         console.log('No orientation data available');
         return;
     }
-    
+
     // Apply smoothing
     const smoothedHeading = smoothHeading(rawHeading);
-    
+
     // Only update if change is significant
     const headingChange = Math.abs(smoothedHeading - deviceHeading);
     const minChange = Math.min(headingChange, 360 - headingChange); // Handle wrap-around
-    
+
     if (minChange > HEADING_UPDATE_THRESHOLD || deviceHeading === 0) {
         deviceHeading = smoothedHeading;
         console.log(`Heading updated: raw=${rawHeading.toFixed(1)}°, smoothed=${smoothedHeading.toFixed(1)}°`);
-        
+
         // Update arrow if we have current aircraft
         if (currentAircraft) {
             updateArrowRotation(currentAircraft.bearing);
@@ -671,7 +687,7 @@ function handleOrientation(event) {
  */
 function updateConnectionStatus(status) {
     elements.connectionStatus.className = status;
-    
+
     switch (status) {
         case 'connecting':
             elements.statusText.textContent = 'Connecting...';
@@ -713,16 +729,10 @@ function handleVisibilityChange() {
  */
 function initializeMap() {
     try {
-        // Apply opacity to map container
-        const mapContainer = document.getElementById('map');
-        if (mapContainer) {
-            mapContainer.style.opacity = '0.3';
-        }
-        
         // Create map with all interactions disabled
         map = L.map('map', {
             center: [HOME_LAT, HOME_LON],
-            zoom: 12, // Zoomed out more for better area coverage
+            zoom: 9,
             zoomControl: false,
             dragging: false,
             touchZoom: false,
@@ -731,38 +741,17 @@ function initializeMap() {
             boxZoom: false,
             keyboard: false,
             tap: false,
-            tapTolerance: 0,
             attributionControl: false
         });
-        
-        // Add OpenStreetMap tile layer
-        const tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19,
-            attribution: ''
+
+        // Add a simple, clean tile layer
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png', {
+            maxZoom: 19
         }).addTo(map);
-        
-        // Force opacity on the tile layer after it's added
-        setTimeout(() => {
-            const tilePane = map.getPanes().tilePane;
-            if (tilePane) {
-                tilePane.style.opacity = '0.3';
-            }
-            // Also set opacity on the layer itself
-            if (tileLayer._container) {
-                tileLayer._container.style.opacity = '0.3';
-            }
-        }, 100);
-        
-        // Disable all map interactions after initialization
-        if (map.dragging) map.dragging.disable();
-        if (map.touchZoom) map.touchZoom.disable();
-        if (map.doubleClickZoom) map.doubleClickZoom.disable();
-        if (map.scrollWheelZoom) map.scrollWheelZoom.disable();
-        if (map.boxZoom) map.boxZoom.disable();
-        if (map.keyboard) map.keyboard.disable();
+
     } catch (error) {
         console.error('Error initializing map:', error);
-        // Continue without map if it fails
+        document.getElementById('map').style.display = 'none'; // Hide map on error
     }
 }
 

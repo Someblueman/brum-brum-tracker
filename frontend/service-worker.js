@@ -12,11 +12,11 @@ const urlsToCache = [
   '/plane-placeholder.svg',
   '/icon-192.png',
   '/icon-512.png',
-  '/assets/air-traffic-control-radio-voice-clip-adult-male-control-flight-022-approach_zyZL6Y4d_NWM.mp3',
-  '/assets/air-traffic-control-radio-voice-clip-adult-male-control-flight-019-2-mile-n_GkuBTK4d_NWM.mp3',
-  '/assets/air-traffic-control-radio-voice-clip-adult-male-control-flight-807-maintain_MySHaFN__NWM.mp3',
-  '/assets/air-traffic-control-voice-clip-adult-male-50-airline-control-flight-022-mai_zyBH6F4O_NWM.mp3',
-  '/assets/air-traffic-control-radio-voice-clip-adult-male-control-flight-022-turn-rig_G1SUaYVd_NWM.mp3'
+  '/assets/atc_1.mp3',
+  '/assets/atc_2.mp3',
+  '/assets/atc_3.mp3',
+  '/assets/atc_4.mp3',
+  '/assets/atc_5.mp3'
 ];
 
 // Install event - cache resources

@@ -1,88 +1,105 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Brum Brum">
-    <meta name="theme-color" content="#3b82f6">
+    <meta name="theme-color" content="#87CEEB">
     <title>Brum Brum Tracker</title>
-    
+
     <link rel="stylesheet" href="style.css">
     <link rel="manifest" href="manifest.json">
-    
-    <!-- iOS PWA icons -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+
     <link rel="apple-touch-icon" href="icon-192.png">
     <link rel="apple-touch-icon" sizes="192x192" href="icon-192.png">
     <link rel="apple-touch-icon" sizes="512x512" href="icon-512.png">
 </head>
+
 <body>
-    <div id="app">
-        <!-- Connection Status -->
+    <div id="start-overlay">
+        <div id="welcome-text">
+            <h1>Welcome, Captain Theodore!</h1>
+            <p>Ready to find the brum brums?</p>
+        </div>
+        <button id="start-button">Start Tracking</button>
+    </div>
+
+    <div id="map"></div>
+    <div id="cloud-container">
+        <div class="cloud cloud-1"></div>
+        <div class="cloud cloud-2"></div>
+        <div class="cloud cloud-3"></div>
+        <div class="cloud cloud-4"></div>
+    </div>
+
+    <div id="app" class="hidden">
         <div id="connection-status" class="disconnected">
             <span class="status-dot"></span>
             <span class="status-text">Connecting...</span>
         </div>
 
-        <!-- Dashboard Link -->
         <a href="dashboard.html" id="dashboard-link" class="nav-button">
-            View All Planes
+            All Planes
         </a>
 
-        <!-- Main Display -->
         <div id="main-display">
-            <!-- Direction Arrow Container -->
             <div id="arrow-container">
-                <div id="arrow-animator"> 
+                <div id="arrow-animator">
                     <img id="direction-arrow" src="arrow.svg" alt="Direction Arrow">
                 </div>
                 <div id="distance-display" class="info-badge">-- km</div>
                 <div id="compass-indicator" class="compass-status">Compass: Off</div>
             </div>
 
-            <!-- Aircraft Image -->
             <div id="aircraft-container">
                 <div id="aircraft-stack">
                     <img id="plane-image" src="plane-placeholder.svg" alt="Aircraft">
                 </div>
                 <div id="callsign-display" class="callsign">--</div>
                 <div id="aircraft-count" class="aircraft-count hidden">
-                    <span id="count-number">0</span> Nearby aircraft
+                    <span id="count-number">0</span> more!
                 </div>
             </div>
 
-            <!-- Flight Information -->
             <div id="flight-info">
                 <div class="info-item">
-                    <span class="info-label">Height:</span>
+                    <span class="info-label">How High?</span>
                     <span id="altitude-display" class="info-value">--</span>
                 </div>
                 <div class="info-item">
-                    <span class="info-label">Speed:</span>
+                    <span class="info-label">How Fast?</span>
                     <span id="speed-display" class="info-value">--</span>
                 </div>
                 <div class="info-item">
-                    <span class="info-label">Type:</span>
+                    <span class="info-label">What Kind?</span>
                     <span id="type-display" class="info-value">--</span>
                 </div>
             </div>
         </div>
 
-        <!-- No Aircraft Message -->
         <div id="no-aircraft" class="hidden">
-            <h2 id="no-aircraft-title">Looking for planes...</h2>
-            <p id="no-aircraft-subtitle">Searching for aircraft overhead</p>
+            <h2 id="no-aircraft-title">Scanning the skies...</h2>
+            <p id="no-aircraft-subtitle">Looking for brum brums!</p>
         </div>
 
-        <!-- Audio Elements -->
-        <audio id="atc-sound-1" src="assets/air-traffic-control-radio-voice-clip-adult-male-control-flight-022-approach_zyZL6Y4d_NWM.mp3" preload="auto"></audio>
-        <audio id="atc-sound-2" src="assets/air-traffic-control-radio-voice-clip-adult-male-control-flight-019-2-mile-n_GkuBTK4d_NWM.mp3" preload="auto"></audio>
-        <audio id="atc-sound-3" src="assets/air-traffic-control-radio-voice-clip-adult-male-control-flight-807-maintain_MySHaFN__NWM.mp3" preload="auto"></audio>
-        <audio id="atc-sound-4" src="assets/air-traffic-control-voice-clip-adult-male-50-airline-control-flight-022-mai_zyBH6F4O_NWM.mp3" preload="auto"></audio>
-        <audio id="atc-sound-5" src="assets/air-traffic-control-radio-voice-clip-adult-male-control-flight-022-turn-rig_G1SUaYVd_NWM.mp3" preload="auto"></audio>
+        <audio id="atc-sound-1" src="assets/atc_1.mp3" preload="auto"></audio>
+        <audio id="atc-sound-2" src="assets/atc_2.mp3" preload="auto"></audio>
+        <audio id="atc-sound-3" src="assets/atc_3.mp3" preload="auto"></audio>
+        <audio id="atc-sound-4" src="assets/atc_4.mp3" preload="auto"></audio>
+        <audio id="atc-sound-5" src="assets/atc_5.mp3" preload="auto"></audio>
+        <audio id="unlock-sound"
+            src="data:audio/mp3;base64,SUQzBAAAAAABEVRYWFgAAAAtAAADY29tbWVudABCaWdTb3VuZEJhbmsuY29tIC8gTGliAv2/4+AqASwAAAAAAAZTTTE5dAAAAANIAAAAAAAAAd2Rmdg=="
+            preload="auto"></audio>
     </div>
 
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <script src="main.js?v=20250624.3"></script>
 </body>
+
 </html>
