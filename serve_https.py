@@ -27,7 +27,11 @@ class CORSRequestHandler(http.server.SimpleHTTPRequestHandler):
     
     def __init__(self, *args, **kwargs):
         # Set the directory to serve
-        super().__init__(*args, directory='frontend', **kwargs)
+        try:
+            super().__init__(*args, directory='frontend', **kwargs)
+        except (ConnectionResetError, BrokenPipeError, ssl.SSLError) as e:
+            # Silently handle connection errors
+            pass
     
     def end_headers(self):
         """Add CORS headers to response."""
@@ -45,6 +49,14 @@ class CORSRequestHandler(http.server.SimpleHTTPRequestHandler):
     def log_message(self, format, *args):
         """Custom log format."""
         print(f"{self.address_string()} - {format % args}")
+    
+    def handle(self):
+        """Handle requests with connection error handling."""
+        try:
+            super().handle()
+        except (ConnectionResetError, BrokenPipeError, ssl.SSLError) as e:
+            # These errors are common with HTTPS and service workers
+            pass
 
 
 def check_mkcert_certificates():
@@ -101,8 +113,20 @@ def main():
         context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
         context.load_cert_chain(CERT_FILE, KEY_FILE)
         
+        # Custom TCP server that handles SSL errors gracefully
+        class QuietTCPServer(socketserver.TCPServer):
+            def handle_error(self, request, client_address):
+                # Get the error type
+                exc_type = sys.exc_info()[0]
+                if exc_type in (ConnectionResetError, BrokenPipeError, ssl.SSLError):
+                    # Silently ignore SSL and connection errors
+                    pass
+                else:
+                    # Let other errors bubble up
+                    super().handle_error(request, client_address)
+        
         # Create and start HTTPS server
-        with socketserver.TCPServer((FRONTEND_HOST, HTTPS_PORT), CORSRequestHandler) as httpd:
+        with QuietTCPServer((FRONTEND_HOST, HTTPS_PORT), CORSRequestHandler) as httpd:
             httpd.socket = context.wrap_socket(httpd.socket, server_side=True)
             httpd.serve_forever()
     except KeyboardInterrupt:
