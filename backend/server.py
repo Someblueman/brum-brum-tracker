@@ -20,6 +20,11 @@ from backend.opensky_client import (
 )
 from backend.db import get_aircraft_from_cache, add_to_logbook, get_logbook
 from backend.aircraft_data import get_aircraft_data
+from backend.aircraft_database import (
+    fetch_aircraft_details_from_hexdb,
+    fetch_flight_route_from_hexdb,
+    fetch_airport_info_from_hexdb
+)
 from utils.constants import (
     WEBSOCKET_HOST,
     WEBSOCKET_PORT,
@@ -48,61 +53,86 @@ logging.getLogger('backend.opensky_client').setLevel(logging.DEBUG)
 logging.getLogger('utils.geometry').setLevel(logging.DEBUG)
 logger = logging.getLogger(__name__)
 
-def _simplify_aircraft_type(type_string: Optional[str]) -> str:
+
+def simplify_aircraft_type(manufacturer: str, type_name: str) -> str:
     """
-    Translates a technical aircraft type string into a simple, kid-friendly name.
+    Convert technical aircraft type to kid-friendly names.
     """
-    if not type_string:
-        # This is the likely cause of the "Aircraft" classification.
-        # It means the API didn't provide a type string for this plane.
-        logger.warning("Received an empty aircraft type string. Returning default.")
-        return "Aircraft"
-
-    type_string_upper = type_string.upper()
-
-    # A dictionary to map technical codes to simple, recognizable names.
-    # The order is critical: most specific codes must come first.
-    type_map = {
-        # Airbus (Specific before general)
-        "A21N": "Airbus A321neo",
-        "A20N": "Airbus A320neo",
-        "A38": "Airbus A380 'Superjumbo'",
-        "A35": "Airbus A350",
-        "A34": "Airbus A340",
-        "A33": "Airbus A330",
-        "A32": "Airbus A320", # General A320 family is checked last
-
-        # Boeing
-        "787": "Boeing 787 Dreamliner",
-        "777": "Boeing 777",
-        "767": "Boeing 767",
-        "747": "Boeing 747 'Jumbo Jet'",
-        "737": "Boeing 737",
-
-        # Other common jets
-        "E19": "Embraer E-Jet",
-        "E17": "Embraer E-Jet",
-        "CRJ": "CRJ Jet",
-        "BOMBARDIER": "Bombardier Jet",
-        "GLF": "Gulfstream Jet",
-        "LEAR": "Learjet",
-        "C25C": "Cessna Citation",
-        
-        # Smaller Aircraft
-        "C172": "Cessna Skyhawk",
-    }
-
-    for code, name in type_map.items():
-        if code in type_string_upper:
-            return name
-
-    # If no specific match is found, try a general one
-    if "BOEING" in type_string_upper: return "Boeing Aircraft"
-    if "AIRBUS" in type_string_upper: return "Airbus Aircraft"
-    if "EMBRAER" in type_string_upper: return "Embraer Aircraft"
+    # Clean up the input
+    manufacturer = (manufacturer or '').strip()
+    type_name = (type_name or '').strip()
     
-    # Final fallback for anything else
-    return "Unknown Model"
+    # Common aircraft type mappings
+    type_mappings = {
+        # Boeing
+        '737': 'Boeing 737',
+        '747': 'Boeing 747 Jumbo Jet',
+        '757': 'Boeing 757',
+        '767': 'Boeing 767',
+        '777': 'Boeing 777',
+        '787': 'Boeing 787 Dreamliner',
+        # Airbus
+        'A319': 'Airbus A319',
+        'A320': 'Airbus A320',
+        'A321': 'Airbus A321',
+        'A330': 'Airbus A330',
+        'A340': 'Airbus A340',
+        'A350': 'Airbus A350',
+        'A380': 'Airbus A380 Super Jumbo',
+        # Embraer
+        'E170': 'Embraer E170',
+        'E175': 'Embraer E175',
+        'E190': 'Embraer E190',
+        'E195': 'Embraer E195',
+        'ERJ': 'Embraer Regional Jet',
+        # Bombardier
+        'CRJ': 'Bombardier CRJ',
+        'Q400': 'Bombardier Dash 8',
+        'DHC-8': 'Bombardier Dash 8',
+        # ATR
+        'ATR 42': 'ATR 42 Propeller',
+        'ATR 72': 'ATR 72 Propeller',
+        # Others
+        'Cessna': 'Cessna Small Plane',
+        'Beechcraft': 'Beechcraft Small Plane',
+        'Gulfstream': 'Gulfstream Private Jet',
+        'Learjet': 'Learjet',
+        'Citation': 'Cessna Citation Jet',
+    }
+    
+    # Check for common patterns in the type name
+    full_type = f"{manufacturer} {type_name}".upper()
+    
+    for pattern, friendly_name in type_mappings.items():
+        if pattern.upper() in full_type:
+            return friendly_name
+    
+    # Special handling for specific manufacturers
+    if 'BOEING' in manufacturer.upper():
+        if type_name:
+            return f"Boeing {type_name}"
+        return "Boeing Aircraft"
+    elif 'AIRBUS' in manufacturer.upper():
+        if type_name:
+            return f"Airbus {type_name}"
+        return "Airbus Aircraft"
+    elif 'CESSNA' in manufacturer.upper():
+        return "Cessna Small Plane"
+    elif 'PIPER' in manufacturer.upper():
+        return "Piper Small Plane"
+    elif 'BEECH' in manufacturer.upper() or 'BEECHCRAFT' in manufacturer.upper():
+        return "Beechcraft Small Plane"
+    
+    # If we have both manufacturer and type, combine them nicely
+    if manufacturer and type_name:
+        return f"{manufacturer} {type_name}"
+    elif manufacturer:
+        return f"{manufacturer} Aircraft"
+    elif type_name:
+        return type_name
+    
+    return "Unknown Aircraft"
+
 
 class AircraftTracker:
     """Manages aircraft tracking and WebSocket connections."""
@@ -117,111 +147,135 @@ class AircraftTracker:
         self.polling_task: Optional[asyncio.Task] = None
     
     def format_aircraft_message(self, aircraft: Dict[str, Any]) -> Dict[str, Any]:
-            """
-            Format aircraft data for frontend consumption.
-            
-            Args:
-                aircraft: Aircraft state dictionary
-                
-            Returns:
-                Formatted message dictionary
-            """
-            # Get image data using scraper (checks cache first)
-            media_data = get_aircraft_data(aircraft['icao24'])
+        """
+        Format aircraft data for frontend consumption, including details from hexdb.
+        """
+        icao24 = aircraft['icao24']
+        callsign = aircraft.get('callsign', '')
 
-            # Gets both raw and simplified aircraft type for debugging
-            raw_type = media_data.get('type')
-            simple_type = _simplify_aircraft_type(raw_type)
-            
-            # Convert altitude from meters to feet
-            altitude_ft = aircraft['baro_altitude'] * 3.28084 if aircraft['baro_altitude'] else 0
-            
-            # Convert velocity from m/s to km/h
-            speed_kmh = aircraft['velocity'] * 3.6 if aircraft['velocity'] else 0
-            
-            message = {
-                'type': 'aircraft_update',
-                'timestamp': datetime.utcnow().isoformat(),
-                'icao24': aircraft['icao24'],
-                'callsign': aircraft.get('callsign', ''),
-                'bearing': round(aircraft['bearing_from_home'], 1),
-                'distance_km': round(aircraft['distance_km'], 1),
-                'altitude_ft': round(altitude_ft),
-                'speed_kmh': round(speed_kmh),
-                'elevation_angle': round(aircraft['elevation_angle'], 1),
-                'aircraft_type': simple_type,
-                'aircraft_type_raw': raw_type,
-                'image_url': media_data.get('image_url', '')
-            }
-            
-            return message
+        # 1. Get Aircraft Name from hexdb
+        aircraft_details = fetch_aircraft_details_from_hexdb(icao24)
+        if aircraft_details and 'Manufacturer' in aircraft_details:
+            manufacturer = aircraft_details.get('Manufacturer', '')
+            type_name = aircraft_details.get('Type', '')
+            aircraft_type = simplify_aircraft_type(manufacturer, type_name)
+        else:
+            aircraft_type = 'Unknown Aircraft'
+
+        # 2. Get Image Data (uses existing logic)
+        media_data = get_aircraft_data(icao24)
+
+        # 3. Get Route Information from hexdb
+        origin_info = None
+        destination_info = None
+        flight_route = fetch_flight_route_from_hexdb(callsign)
+        if flight_route and 'route' in flight_route:
+            route_parts = flight_route['route'].split('-')
+            if len(route_parts) == 2:
+                origin_icao, dest_icao = route_parts
+                origin_info = fetch_airport_info_from_hexdb(origin_icao)
+                destination_info = fetch_airport_info_from_hexdb(dest_icao)
+
+        # 4. Format the final message for the frontend
+        altitude_ft = aircraft['baro_altitude'] * 3.28084 if aircraft['baro_altitude'] else 0
+        speed_kmh = aircraft['velocity'] * 3.6 if aircraft['velocity'] else 0
+        
+        message = {
+            'type': 'aircraft_update',
+            'timestamp': datetime.utcnow().isoformat(),
+            'icao24': icao24,
+            'callsign': callsign,
+            'bearing': round(aircraft['bearing_from_home'], 1),
+            'distance_km': round(aircraft['distance_km'], 1),
+            'altitude_ft': round(altitude_ft),
+            'speed_kmh': round(speed_kmh),
+            'elevation_angle': round(aircraft['elevation_angle'], 1),
+            'aircraft_type': aircraft_type,
+            'image_url': media_data.get('image_url', ''),
+            'origin': {
+                'airport': origin_info.get('airport') if origin_info else 'Unknown',
+                'country_code': origin_info.get('country_code') if origin_info else None,
+                'region_name': origin_info.get('region_name') if origin_info else None,
+            } if origin_info else None,
+            'destination': {
+                'airport': destination_info.get('airport') if destination_info else 'Unknown',
+                'country_code': destination_info.get('country_code') if destination_info else None,
+                'region_name': destination_info.get('region_name') if destination_info else None,
+            } if destination_info else None,
+        }
+        
+        return message
 
     
     def format_aircraft_list_message(self, aircraft_list: List[Dict[str, Any]]) -> Dict[str, Any]:
-            """
-            Format a list of approaching aircraft for the dashboard.
-            
-            Args:
-                aircraft_list: List of aircraft state dictionaries
+                """
+                Format a list of approaching aircraft for the dashboard.
                 
-            Returns:
-                Formatted message with aircraft list and ETAs
-            """
-            from utils.geometry import calculate_eta
-            
-            formatted_aircraft = []
-            
-            for aircraft in aircraft_list:
-                # Skip if no velocity data
-                if aircraft.get('velocity') is None:
-                    continue
+                Args:
+                    aircraft_list: List of aircraft state dictionaries
+                    
+                Returns:
+                    Formatted message with aircraft list and ETAs
+                """
+                from utils.geometry import calculate_eta
                 
-                # Calculate ETA
-                eta_seconds = calculate_eta(
-                    aircraft['distance_km'],
-                    aircraft['velocity'],
-                    aircraft.get('elevation_angle', 0)
-                )
+                formatted_aircraft = []
                 
-                # Skip if ETA is infinite (not approaching)
-                if eta_seconds == float('inf'):
-                    continue
-                
-                # Get image data using scraper (checks cache first)
-                media_data = get_aircraft_data(aircraft['icao24'])
+                for aircraft in aircraft_list:
+                    # Skip if no velocity data
+                    if aircraft.get('velocity') is None:
+                        continue
+                    
+                    # Calculate ETA
+                    eta_seconds = calculate_eta(
+                        aircraft['distance_km'],
+                        aircraft['velocity'],
+                        aircraft.get('elevation_angle', 0)
+                    )
+                    
+                    # Skip if ETA is infinite (not approaching)
+                    if eta_seconds == float('inf'):
+                        continue
 
-                # Gets both raw and simplified aircraft type for debugging
-                raw_type = media_data.get('type')
-                simple_type = _simplify_aircraft_type(raw_type)
+                    # --- START OF FIX ---
+                    # 1. Get Aircraft Name from hexdb
+                    icao24 = aircraft['icao24']
+                    aircraft_details = fetch_aircraft_details_from_hexdb(icao24)
+                    if aircraft_details and 'Manufacturer' in aircraft_details:
+                        manufacturer = aircraft_details.get('Manufacturer', '')
+                        type_name = aircraft_details.get('Type', '')
+                        aircraft_type = simplify_aircraft_type(manufacturer, type_name)
+                    else:
+                        aircraft_type = 'Unknown Aircraft'
+                    # --- END OF FIX ---
+
+                    # Convert altitude and speed
+                    altitude_ft = aircraft['baro_altitude'] * 3.28084 if aircraft['baro_altitude'] else 0
+                    speed_kmh = aircraft['velocity'] * 3.6 if aircraft['velocity'] else 0
+                    
+                    formatted_aircraft.append({
+                        'icao24': aircraft['icao24'],
+                        'callsign': aircraft.get('callsign', '').strip(),
+                        'bearing': round(aircraft['bearing_from_home'], 1),
+                        'distance_km': round(aircraft['distance_km'], 1),
+                        'altitude_ft': round(altitude_ft),
+                        'speed_kmh': round(speed_kmh),
+                        'eta_seconds': round(eta_seconds),
+                        'eta_minutes': round(eta_seconds / 60, 1),
+                        'aircraft_type': aircraft_type, # Use the new aircraft_type
+                    })
                 
-                # Convert altitude and speed
-                altitude_ft = aircraft['baro_altitude'] * 3.28084 if aircraft['baro_altitude'] else 0
-                speed_kmh = aircraft['velocity'] * 3.6 if aircraft['velocity'] else 0
+                # Sort by ETA (closest first)
+                formatted_aircraft.sort(key=lambda x: x['eta_seconds'])
                 
-                formatted_aircraft.append({
-                    'icao24': aircraft['icao24'],
-                    'callsign': aircraft.get('callsign', '').strip(),
-                    'bearing': round(aircraft['bearing_from_home'], 1),
-                    'distance_km': round(aircraft['distance_km'], 1),
-                    'altitude_ft': round(altitude_ft),
-                    'speed_kmh': round(speed_kmh),
-                    'eta_seconds': round(eta_seconds),
-                    'eta_minutes': round(eta_seconds / 60, 1),
-                    'aircraft_type': simple_type,
-                    'aircraft_type_raw': raw_type,
-                })
-            
-            # Sort by ETA (closest first)
-            formatted_aircraft.sort(key=lambda x: x['eta_seconds'])
-            
-            message = {
-                'type': 'approaching_aircraft_list',
-                'timestamp': datetime.utcnow().isoformat(),
-                'aircraft_count': len(formatted_aircraft),
-                'aircraft': formatted_aircraft[:10]  # Limit to 10 closest aircraft
-            }
-            
-            return message
+                message = {
+                    'type': 'approaching_aircraft_list',
+                    'timestamp': datetime.utcnow().isoformat(),
+                    'aircraft_count': len(formatted_aircraft),
+                    'aircraft': formatted_aircraft[:10]  # Limit to 10 closest aircraft
+                }
+                
+                return message
     
     async def broadcast_message(self, message: Dict[str, Any]) -> None:
         """

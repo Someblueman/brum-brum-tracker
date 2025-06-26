@@ -82,6 +82,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     function displayLogbook(log) {
+        const grid = document.getElementById('logbook-grid');
         grid.innerHTML = ''; // Clear previous entries
         if (!log || log.length === 0) {
             grid.innerHTML = '<p>No brum brums spotted yet. Go find some!</p>';
@@ -93,21 +94,49 @@ document.addEventListener('DOMContentLoaded', () => {
             card.className = 'logbook-card';
 
             const planeImg = document.createElement('img');
-            planeImg.src = entry.image_url || 'plane-placeholder.svg';
+            planeImg.src = entry.image_url || 'assets/plane-placeholder.svg';
             planeImg.alt = entry.aircraft_type;
+            planeImg.onerror = () => { planeImg.src = 'assets/plane-placeholder.svg'; }; // Fallback for broken images
 
             const planeName = document.createElement('div');
             planeName.className = 'plane-name';
             planeName.textContent = entry.aircraft_type;
 
+            // Container for the details
+            const detailsDiv = document.createElement('div');
+            detailsDiv.className = 'sighting-details';
+
+            // Sighting count
+            const sightingCount = document.createElement('div');
+            sightingCount.className = 'sighting-count';
+            sightingCount.textContent = `Spotted: ${entry.sighting_count} time${entry.sighting_count > 1 ? 's' : ''}`;
+
+            // First spotted date
             const firstSpotted = document.createElement('div');
-            firstSpotted.className = 'first-spotted';
-            const date = new Date(entry.first_spotted);
-            firstSpotted.textContent = `First spotted: ${date.toLocaleDateString()}`;
+            firstSpotted.className = 'sighting-date';
+            const firstDate = new Date(entry.first_spotted);
+            firstSpotted.textContent = `First seen: ${firstDate.toLocaleDateString()}`;
+
+            // Append count and first date
+            detailsDiv.appendChild(sightingCount);
+            detailsDiv.appendChild(firstSpotted);
+
+            // Last spotted date (only if it exists and is different from first)
+            if (entry.last_spotted) {
+                const lastSpotted = document.createElement('div');
+                lastSpotted.className = 'sighting-date';
+                const lastDate = new Date(entry.last_spotted);
+
+                // Only show if it's a different day
+                if (lastDate.toDateString() !== firstDate.toDateString()) {
+                    lastSpotted.textContent = `Last seen: ${lastDate.toLocaleDateString()}`;
+                    detailsDiv.appendChild(lastSpotted);
+                }
+            }
 
             card.appendChild(planeImg);
             card.appendChild(planeName);
-            card.appendChild(firstSpotted);
+            card.appendChild(detailsDiv);
             grid.appendChild(card);
         });
     }

@@ -1,6 +1,7 @@
 """
 Aircraft database service using multiple data sources.
 """
+
 import logging
 import requests
 from typing import Dict, Optional, Tuple
@@ -9,95 +10,52 @@ logger = logging.getLogger(__name__)
 
 # Constants
 REQUEST_TIMEOUT = 10
-USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+USER_AGENT = "BrumBrumTracker/1.0"
+HEXDB_BASE_URL = "https://hexdb.io/api/v1"
 
-
-def fetch_aircraft_data_from_hexdb(icao24: str) -> Tuple[Optional[str], Optional[str], Optional[str]]:
+def fetch_aircraft_details_from_hexdb(icao24: str) -> Optional[Dict]:
     """
-    Fetch aircraft data from hexdb.io API.
-    
-    Args:
-        icao24: ICAO24 hex code
-        
-    Returns:
-        Tuple of (registration, aircraft_type, operator)
+    Fetch aircraft details (type, manufacturer, etc.) from hexdb.io API.
     """
     try:
-        # Normalize to lowercase (hexdb uses lowercase)
-        icao24 = icao24.lower()
-        
-        # hexdb.io API endpoint
-        api_url = f"https://hexdb.io/api/v1/aircraft/{icao24}"
-        
-        headers = {
-            'User-Agent': USER_AGENT,
-            'Accept': 'application/json',
-        }
-        
-        response = requests.get(api_url, headers=headers, timeout=REQUEST_TIMEOUT)
-        
-        if response.status_code == 404:
-            logger.debug(f"No data found in hexdb for ICAO24: {icao24}")
-            return None, None, None
-            
-        response.raise_for_status()
-        
-        data = response.json()
-        
-        # Extract data
-        registration = data.get('Registration')
-        aircraft_type = data.get('Type')
-        operator = data.get('RegisteredOwners')
-        
-        logger.info(f"Found hexdb data for {icao24}: {registration} - {aircraft_type}")
-        
-        return registration, aircraft_type, operator
-        
-    except Exception as e:
+        url = f"{HEXDB_BASE_URL}/aircraft/{icao24.lower()}"
+        response = requests.get(url, headers={'User-Agent': USER_AGENT}, timeout=REQUEST_TIMEOUT)
+        if response.status_code == 200:
+            return response.json()
+        logger.debug(f"No aircraft details found in hexdb for ICAO24: {icao24}")
+        return None
+    except requests.RequestException as e:
         logger.error(f"Error fetching from hexdb for {icao24}: {e}")
-        return None, None, None
+        return None
 
-
-def fetch_aircraft_data_from_adsb_exchange(icao24: str) -> Tuple[Optional[str], Optional[str], Optional[str]]:
+def fetch_flight_route_from_hexdb(callsign: str) -> Optional[Dict]:
     """
-    Fetch aircraft data from ADS-B Exchange database.
-    Note: This requires the aircraft-database.csv file to be downloaded.
-    
-    Args:
-        icao24: ICAO24 hex code
-        
-    Returns:
-        Tuple of (registration, aircraft_type, operator)
+    Fetch flight route by callsign from hexdb.io API.
     """
+    if not callsign:
+        return None
     try:
-        # For now, return None as this would require downloading and parsing a large CSV
-        # This is a placeholder for future implementation
-        return None, None, None
-    except Exception as e:
-        logger.error(f"Error fetching from ADS-B Exchange for {icao24}: {e}")
-        return None, None, None
+        url = f"{HEXDB_BASE_URL}/route/icao/{callsign}"
+        response = requests.get(url, headers={'User-Agent': USER_AGENT}, timeout=REQUEST_TIMEOUT)
+        if response.status_code == 200:
+            return response.json()
+        return None
+    except requests.RequestException as e:
+        logger.error(f"Failed to fetch route for {callsign}: {e}")
+        return None
 
-
-def get_aircraft_metadata(icao24: str) -> Dict[str, Optional[str]]:
+def fetch_airport_info_from_hexdb(icao: str) -> Optional[Dict]:
     """
-    Get aircraft metadata from various sources.
-    
-    Args:
-        icao24: ICAO24 hex code
-        
-    Returns:
-        Dictionary with registration, type, and operator
+    Fetch airport information by ICAO code from hexdb.io API.
     """
-    # Try hexdb.io first
-    registration, aircraft_type, operator = fetch_aircraft_data_from_hexdb(icao24)
-    
-    # If no data, try other sources (placeholder for now)
-    if not registration and not aircraft_type:
-        # Could try other APIs here
-        pass
-    
-    return {
-        'registration': registration,
-        'type': aircraft_type,
-        'operator': operator
-    }
+    if not icao:
+        return None
+    try:
+        url = f"{HEXDB_BASE_URL}/airport/icao/{icao}"
+        response = requests.get(url, headers={'User-Agent': USER_AGENT}, timeout=REQUEST_TIMEOUT)
+        if response.status_code == 200:
+            return response.json()
+        return None
+    except requests.RequestException as e:
+        logger.error(f"Failed to fetch airport info for {icao}: {e}")
+        return None

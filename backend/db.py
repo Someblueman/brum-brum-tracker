@@ -54,23 +54,52 @@ class AircraftDatabase:
         self.connection.commit()
 
     def create_logbook_table(self) -> None:
-        """Create the logbook table if it doesn't exist."""
+        """
+        Create or update the logbook table schema.
+        Now includes sighting count and last spotted timestamp.
+        """
         cursor = self.connection.cursor()
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS logbook (
-                aircraft_type TEXT PRIMARY KEY,
-                image_url TEXT,
-                first_spotted TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
+        # Using "IF NOT EXISTS" for columns is not standard in SQLite,
+        # so we check and add them manually for existing databases.
+        try:
+            cursor.execute("SELECT sighting_count, last_spotted FROM logbook LIMIT 1")
+        except sqlite3.OperationalError:
+            # Table is either new or old schema, create/update it
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS logbook (
+                    aircraft_type TEXT PRIMARY KEY,
+                    image_url TEXT,
+                    first_spotted TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    last_spotted TIMESTAMP,
+                    sighting_count INTEGER DEFAULT 1
+                )
+            """)
+            # Add columns if they don't exist (for backward compatibility)
+            try:
+                cursor.execute("ALTER TABLE logbook ADD COLUMN last_spotted TIMESTAMP")
+            except sqlite3.OperationalError:
+                pass # Column already exists
+            try:
+                cursor.execute("ALTER TABLE logbook ADD COLUMN sighting_count INTEGER DEFAULT 1")
+            except sqlite3.OperationalError:
+                pass # Column already exists
         self.connection.commit()
 
     def add_to_logbook(self, aircraft_type: str, image_url: str) -> None:
-        """Add a new unique aircraft type to the logbook."""
+        """
+        Add a new aircraft to the logbook or update an existing one.
+        Increments the sighting count and updates the last spotted timestamp.
+        """
         cursor = self.connection.cursor()
+        # The image_url might be updated if a better one is found later
+        # The COALESCE function ensures we don't nullify an existing image url
         cursor.execute("""
-            INSERT OR IGNORE INTO logbook (aircraft_type, image_url)
-            VALUES (?, ?)
+            INSERT INTO logbook (aircraft_type, image_url, last_spotted, sighting_count)
+            VALUES (?, ?, CURRENT_TIMESTAMP, 1)
+            ON CONFLICT(aircraft_type) DO UPDATE SET
+                sighting_count = sighting_count + 1,
+                last_spotted = CURRENT_TIMESTAMP,
+                image_url = COALESCE(excluded.image_url, image_url)
         """, (aircraft_type, image_url or ''))
         self.connection.commit()
 

@@ -62,6 +62,7 @@ let isIOS = false;
 let compassSupported = false;
 let seenAircraft = new Set(); // Track aircraft that have already played sound
 let aircraftLastSeen = new Map(); // Track when each aircraft was last seen
+let sessionSpottedCount = 0; // New state for the session counter
 
 // Smoothing for compass readings
 const headingHistory = [];
@@ -93,6 +94,14 @@ const elements = {
     startButtonMammaPappa: document.getElementById('start-button-mamma-pappa'),
     startButtonMormorPops: document.getElementById('start-button-mormor-pops'),
     startOverlay: document.getElementById('start-overlay'),
+    sessionTracker: document.getElementById('session-tracker'),
+    sessionCountNumber: document.getElementById('session-count-number'),
+    originInfo: document.getElementById('origin-info'),
+    originFlag: document.getElementById('origin-flag'),
+    originCountry: document.getElementById('origin-country'),
+    destinationInfo: document.getElementById('destination-info'),
+    destinationFlag: document.getElementById('destination-flag'),
+    destinationCountry: document.getElementById('destination-country'),
 };
 
 // Audio Configuration
@@ -132,48 +141,71 @@ let activeBrumSet = [];
 let atcAudioSet = [];
 const ATC_SOUND_CHANCE = 0.2; // 20% chance to play an ATC sound
 
+function getFlagEmoji(countryCode) {
+    if (!countryCode || countryCode.length !== 2) return '';
+    const codePoints = countryCode.toUpperCase().split('').map(char => 127397 + char.charCodeAt());
+    return String.fromCodePoint(...codePoints);
+}
+
 function resetUI() {
-    console.log('Resetting UI to initial state.');
+    console.log('Resetting UI to its initial start screen state.');
 
-    // Show the start overlay and hide the main app content
-    elements.startOverlay.style.display = 'flex';
-    elements.appContainer.classList.add('hidden');
+    // Ensure start overlay is visible and main app is hidden
+    if (elements.startOverlay) elements.startOverlay.style.display = 'flex';
+    if (elements.appContainer) elements.appContainer.classList.add('hidden');
 
-    // Disconnect the WebSocket if it's open to ensure a clean start
-    if (websocket && websocket.readyState === WebSocket.OPEN) {
-        console.log('Closing existing WebSocket connection during UI reset.');
-        // Use code 1000 for a normal closure. Don't schedule a reconnect.
-        websocket.onclose = null; // Prevent the default reconnect logic from firing
-        websocket.close(1000, "Navigating away");
+    // Close any existing WebSocket connection cleanly.
+    if (websocket) {
+        console.log('Closing WebSocket connection during UI reset.');
+        // Remove the onclose handler to prevent automatic reconnection attempts during a manual reset.
+        websocket.onclose = () => { };
+        websocket.close(1000, "User navigating back to start screen");
         websocket = null;
     }
 
-    // Reset connection status indicator
+    // Explicitly reset the connection status indicator
     updateConnectionStatus('disconnected');
+
+    // Stop any animations or pending timeouts
+    if (glowTimeout) clearTimeout(glowTimeout);
+    if (elements.arrowAnimator) elements.arrowAnimator.classList.remove('glow');
+
+    // Reset and hide the session tracker
+    sessionSpottedCount = 0;
+    if (elements.sessionCountNumber) elements.sessionCountNumber.textContent = sessionSpottedCount;
+    if (elements.sessionTracker) elements.sessionTracker.classList.add('hidden');
+
+
+
+    // Ensure the start buttons are ready to be used again by re-binding them.
+    rebindStartButtons();
 }
+
 
 /**
  * Re-creates the start buttons and attaches fresh event listeners.
- * This is a robust way to solve issues with the back-forward cache.
+ * This is a robust way to solve issues with the back-forward cache (bfcache).
  */
 function rebindStartButtons() {
     console.log('Re-binding event listeners to start buttons.');
 
-    // Function to replace a button and re-attach its listener
     const rebind = (buttonId, audioSetKey) => {
         const oldButton = document.getElementById(buttonId);
-        if (!oldButton) return;
+        const startButtonsContainer = document.getElementById('start-buttons');
+        if (!oldButton || !startButtonsContainer) return;
 
-        // Create a new button by cloning the old one
-        const newButton = oldButton.cloneNode(true);
+        // Create a new button from scratch to ensure no old listeners are carried over.
+        const newButton = document.createElement('button');
+        newButton.id = oldButton.id;
+        newButton.textContent = oldButton.textContent;
+        newButton.className = oldButton.className;
+        // Copy any other necessary attributes from the old button if needed.
 
-        // Replace the old button with the new one in the DOM
-        oldButton.parentNode.replaceChild(newButton, oldButton);
+        // Replace the old button with the new one in the DOM.
+        startButtonsContainer.replaceChild(newButton, oldButton);
 
-        // Add a fresh event listener to the new button
-        newButton.addEventListener('click', () => {
-            startTracking(audioSetKey);
-        });
+        // Add the click listener to the new button.
+        newButton.addEventListener('click', () => startTracking(audioSetKey), { once: true });
     };
 
     rebind('start-button-mamma-pappa', 'mamma_pappa');
@@ -185,30 +217,25 @@ function rebindStartButtons() {
  * Initialize the application
  */
 function init() {
-    // Initialize the background map
+    console.log("Application initializing...");
     initializeMap();
 
-    // Detect iOS
     isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
 
-    // Attach event listeners for the first time
-    rebindStartButtons();
-
-    // Handle visibility changes
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
-    // This listener detects when the page is shown, including from the back-forward cache.
     window.addEventListener('pageshow', function (event) {
         // event.persisted is true if the page was loaded from the bfcache.
         if (event.persisted) {
-            console.log('Page was loaded from the bfcache. Resetting UI and re-binding listeners.');
-            // Manually reset the UI to the start screen.
+            console.log('Page has been restored from the bfcache. Resetting UI.');
             resetUI();
-            // Re-bind listeners to ensure they are active.
-            rebindStartButtons();
         }
     });
+
+    // Initial UI state setup, in case pageshow doesn't fire on first load.
+    resetUI();
 }
+
 
 /**
  * Start the tracking experience
@@ -217,6 +244,10 @@ function init() {
 function startTracking(audioSetKey) {
     elements.startOverlay.style.display = 'none';
     elements.appContainer.classList.remove('hidden');
+
+    sessionSpottedCount = 0;
+    elements.sessionCountNumber.textContent = sessionSpottedCount;
+    elements.sessionTracker.classList.add('hidden'); // Start hidden
 
     // Set the active audio files
     activeBrumSet = audioConfig[audioSetKey].map(src => {
@@ -352,6 +383,11 @@ function handleMessage(data) {
             handleAircraftUpdate(data);
             break;
 
+        // Add this new case to explicitly ignore the dashboard's message type
+        case 'approaching_aircraft_list':
+            // This message is for the dashboard, so the main tracker ignores it.
+            break;
+
         case 'no_aircraft':
             showNoAircraft();
             break;
@@ -380,12 +416,8 @@ function handleAircraftUpdate(data) {
     }
 }
 
-/**
- * Update aircraft display with new data
- */
 function updateAircraftDisplay(aircraft) {
     currentAircraft = aircraft;
-
 
     // Show main display, hide no aircraft message
     elements.mainDisplay.classList.remove('hidden');
@@ -398,7 +430,6 @@ function updateAircraftDisplay(aircraft) {
     elements.speedDisplay.textContent = `${Math.round(aircraft.speed_kmh)} km/h`;
     elements.typeDisplay.textContent = aircraft.aircraft_type || 'Unknown';
 
-
     // Update aircraft image
     if (aircraft.image_url) {
         elements.planeImage.src = aircraft.image_url;
@@ -407,11 +438,46 @@ function updateAircraftDisplay(aircraft) {
     // Update arrow rotation
     updateArrowRotation(aircraft.bearing);
 
+    // Update Route Information
+    if (aircraft.origin && aircraft.origin.country_code) {
+        elements.originFlag.textContent = getFlagEmoji(aircraft.origin.country_code);
+        // Display airport name, or region, or country code as fallback
+        const originDisplay = aircraft.origin.airport !== 'Unknown' 
+            ? aircraft.origin.airport 
+            : (aircraft.origin.region_name || aircraft.origin.country_code || 'Unknown');
+        elements.originCountry.textContent = originDisplay;
+        elements.originInfo.classList.remove('hidden');
+    } else {
+        elements.originInfo.classList.add('hidden');
+    }
+
+    if (aircraft.destination && aircraft.destination.country_code) {
+        elements.destinationFlag.textContent = getFlagEmoji(aircraft.destination.country_code);
+        // Display airport name, or region, or country code as fallback
+        const destDisplay = aircraft.destination.airport !== 'Unknown' 
+            ? aircraft.destination.airport 
+            : (aircraft.destination.region_name || aircraft.destination.country_code || 'Unknown');
+        elements.destinationCountry.textContent = destDisplay;
+        elements.destinationInfo.classList.remove('hidden');
+    } else {
+        elements.destinationInfo.classList.add('hidden');
+    }
+
     // Check if this is a new aircraft (not seen before) or hasn't been seen in 5 minutes
     const aircraftId = aircraft.icao24;
     const now = Date.now();
     const lastSeen = aircraftLastSeen.get(aircraftId);
     const fiveMinutes = 5 * 60 * 1000; // 5 minutes in milliseconds
+
+    // Only increment the session counter for planes we haven't seen yet in this session.
+    if (!seenAircraft.has(aircraftId)) {
+        sessionSpottedCount++;
+        elements.sessionCountNumber.textContent = sessionSpottedCount;
+        // Show the tracker and keep it visible for the rest of the session
+        if (elements.sessionTracker.classList.contains('hidden')) {
+            elements.sessionTracker.classList.remove('hidden');
+        }
+    }
 
     if (!seenAircraft.has(aircraftId) || (lastSeen && now - lastSeen > fiveMinutes)) {
         // First time seeing this aircraft OR hasn't been seen in 5 minutes

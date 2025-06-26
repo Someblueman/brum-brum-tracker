@@ -1,5 +1,5 @@
 // Service Worker for Brum Brum Tracker PWA
-const CACHE_NAME = 'brum-brum-v2';
+const CACHE_NAME = 'brum-brum-v3';
 const urlsToCache = [
   '/',
   '/index.html',
@@ -40,7 +40,7 @@ self.addEventListener('install', event => {
 // Activate event - clean up old caches
 self.addEventListener('activate', event => {
   const cacheWhitelist = [CACHE_NAME];
-  
+
   event.waitUntil(
     caches.keys()
       .then(cacheNames => {

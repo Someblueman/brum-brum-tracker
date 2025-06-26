@@ -35,6 +35,26 @@ from utils.geometry import (
 
 logger = logging.getLogger(__name__)
 
+def _get_mock_aircraft_state() -> List[Dict[str, Any]]:
+    """
+    Returns a list with a single, hardcoded mock aircraft for testing.
+    """
+    logger.info("--- USING MOCK AIRCRAFT DATA ---")
+    mock_plane = {
+        'icao24': '3474CB',
+        'callsign': 'BCS2886',
+        'origin_country': 'United Kingdom',
+        'longitude': 1.35,      # Was 1.735
+        'latitude': 51.3,       # Was 51.1633
+        'baro_altitude': 11887,  # meters
+        'velocity': 230,        # m/s (approx 450 knots)
+        'true_track': 270,      # Flying due west
+        'on_ground': False,
+        'vertical_rate': 0,
+        'last_contact': time.time()
+    }
+    return [mock_plane]
+
 
 class FlightDataClient:
     """Client for fetching and processing flight data from OpenSky Network."""
@@ -227,6 +247,11 @@ class FlightDataClient:
         Returns:
             List of aircraft state dictionaries
         """
+        USE_MOCK_DATA = True
+
+        if USE_MOCK_DATA:
+            return _get_mock_aircraft_state()
+
         self._enforce_rate_limit()
         
         # Debug: Log the bounding box being used

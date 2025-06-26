@@ -5,10 +5,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Brum Brum">
     <meta name="theme-color" content="#87CEEB">
     <title>Brum Brum Tracker</title>
+
+    <link rel="icon" type="image/png" href="assets/icon-192.png">
+    <link rel="shortcut icon" href="assets/icon-192.png">
 
     <link rel="stylesheet" href="style.css">
     <link rel="manifest" href="manifest.json">
@@ -46,6 +50,10 @@
             <span class="status-text">Connecting...</span>
         </div>
 
+        <div id="session-tracker" class="hidden">
+            Planes Spotted: <span id="session-count-number">0</span>
+        </div>
+
         <div id="nav-container">
             <a href="logbook.html" id="logbook-link" class="nav-button">Logbook</a>
             <a href="dashboard.html" id="dashboard-link" class="nav-button">All Planes</a>
@@ -71,17 +79,33 @@
             </div>
 
             <div id="flight-info">
-                <div class="info-item">
-                    <span class="info-label">How High?</span>
-                    <span id="altitude-display" class="info-value">--</span>
+                <div id="origin-info" class="info-item route-info hidden">
+                    <span class="info-label">From</span>
+                    <div class="route-details">
+                        <span class="route-flag" id="origin-flag"></span>
+                        <span class="route-country" id="origin-country">--</span>
+                    </div>
                 </div>
-                <div class="info-item">
-                    <span class="info-label">How Fast?</span>
-                    <span id="speed-display" class="info-value">--</span>
+                <div class="flight-stats">
+                    <div class="stat-item">
+                        <span class="stat-label">Altitude</span>
+                        <span id="altitude-display" class="stat-value">--</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Speed</span>
+                        <span id="speed-display" class="stat-value">--</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Type</span>
+                        <span id="type-display" class="stat-value">--</span>
+                    </div>
                 </div>
-                <div class="info-item">
-                    <span class="info-label">What Kind?</span>
-                    <span id="type-display" class="info-value">--</span>
+                <div id="destination-info" class="info-item route-info hidden">
+                    <span class="info-label">To</span>
+                    <div class="route-details">
+                        <span class="route-flag" id="destination-flag"></span>
+                        <span class="route-country" id="destination-country">--</span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -98,7 +122,7 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
         integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-    <script src="main.js?v=20250624.3"></script>
+    <script src="main.js?v=20250626.2"></script>
 </body>
 
 </html>

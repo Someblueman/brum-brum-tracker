@@ -1,14 +1,21 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Brum Brum Dashboard</title>
+
+    <link rel="icon" type="image/png" href="assets/icon-192.png">
+    <link rel="shortcut icon" href="assets/icon-192.png">
+
     <link rel="stylesheet" href="dashboard.css">
     <link rel="manifest" href="manifest.json">
 </head>
+
 <body>
     <div id="dashboard-app">
         <!-- Header -->
@@ -38,7 +45,7 @@
                     <!-- Aircraft rows will be inserted here -->
                 </tbody>
             </table>
-            
+
             <!-- No Aircraft Message -->
             <div id="no-aircraft" class="hidden">
                 <p>No planes heading this way right now!</p>
@@ -65,4 +72,5 @@
 
     <script src="dashboard.js"></script>
 </body>
+
 </html>

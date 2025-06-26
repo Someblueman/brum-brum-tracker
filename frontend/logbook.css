@@ -63,12 +63,36 @@ body {
     font-size: 1.4rem;
     color: #34495e;
     font-weight: bold;
+    margin-bottom: 10px;
+    /* Added margin */
 }
 
 .logbook-card .first-spotted {
     font-size: 0.9rem;
     color: #7f8c8d;
     margin-top: 5px;
+}
+
+/* New container for the details */
+.sighting-details {
+    text-align: left;
+    margin: 0 auto;
+    display: inline-block;
+}
+
+/* Style for the count */
+.sighting-count {
+    font-size: 1.1rem;
+    color: #3b82f6;
+    font-weight: bold;
+    margin-bottom: 8px;
+}
+
+/* Style for the dates */
+.sighting-date {
+    font-size: 0.9rem;
+    color: #7f8c8d;
+    margin-top: 4px;
 }
 
 @keyframes fadeIn {
