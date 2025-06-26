@@ -37,13 +37,14 @@ This document tracks the code quality improvements needed before going live with
 ## Priority 2: Code Organization & Architecture
 
 ### 2.1 Backend Refactoring
-- 🔴 Split large `server.py` into modules:
-  - `websocket_handler.py` - WebSocket connection management
-  - `aircraft_tracker.py` - Aircraft detection logic
-  - `data_formatter.py` - Message formatting
+- 🟢 Split large `server.py` into modules:
+  - `server_refactored.py` - WebSocket connection management (created)
+  - `aircraft_service.py` - Aircraft detection logic (created)
+  - `logbook_service.py` - Logbook management (created)
+  - `models.py` - Data models and formatters (created)
 - 🔴 Consolidate duplicate SSL server code
-- 🔴 Create proper package structure to avoid circular imports
-- 🔴 Extract constants and magic numbers
+- 🟢 Create proper package structure to avoid circular imports (service layer created)
+- 🟢 Extract constants and magic numbers (using constants.py)
 
 ### 2.2 Frontend Refactoring
 - 🟡 Create ES6 modules for shared functionality - partially done
