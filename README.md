@@ -1,8 +1,8 @@
-# brum-brum-tracker
+# Brum Brum Tracker
 
-## Project Guide: The "Brum Brum" Overhead Plane Tracker
+## A Real-Time Aircraft Tracker for Toddlers
 
-This document outlines the concept, technical strategy, and deployment steps for creating a personalized, web-based plane spotter for a toddler. The goal is to create a simple, engaging display that shows when an airplane is about to pass overhead, complete with a directional arrow, a picture of the plane, a sound notification, and fun flight data like height and speed.
+Brum Brum Tracker is a delightful web application designed to help young children spot airplanes flying overhead. When an aircraft approaches, the app displays a directional arrow, shows a real photo of the plane, announces it with fun sounds, and presents flight information in kid-friendly language.
 
 ### The Concept & High-Level Strategy
 
@@ -70,6 +70,7 @@ This serves the frontend on https://localhost:8443
    - Open https://localhost:8443 in your browser
    - Accept the certificate warning
    - Or on iPad: https://[your-computer-ip]:8443
+   - Click "Enable Compass" when prompted (iOS devices)
 
 #### Option B: HTTP Mode (Simple setup, no compass on iOS)
 
@@ -105,22 +106,27 @@ This serves the frontend on http://localhost:8080
    - Settings → Accessibility → Guided Access
    - Start session and disable screen areas
 
-### Adding Sound
+### Audio Features
 
-The app expects a "brum brum" sound file. To add it:
-1. Record or download an airplane sound effect
-2. Save as `frontend/brum.mp3`
-3. Keep it short (1-2 seconds) and child-friendly
+The app includes multiple audio options:
+- **ATC sounds**: 5 realistic air traffic control clips (atc_1.mp3 through atc_5.mp3)
+- **Family voices**: Custom greetings from different family members
+- **Start buttons**: Choose between "Mamma & Pappa" or "Mormor & Pops" greeting sets
+
+Audio files are located in `frontend/assets/`
 
 ### Current Features
 
-- Real-time aircraft tracking via OpenSky Network API
-- WebSocket streaming of aircraft data
-- Direction arrow pointing to aircraft (requires device orientation)
-- Aircraft information display (altitude, speed, distance)
-- Visual notifications with glow effect
-- Automatic reconnection on connection loss
-- Smart polling (only when clients connected)
+- **Real-time aircraft tracking** via OpenSky Network API
+- **WebSocket streaming** with automatic reconnection
+- **Direction arrow** pointing to aircraft (compass support on iOS/Android)
+- **Aircraft information** with simplified, kid-friendly plane types
+- **Visual notifications** with animated clouds and glow effects
+- **Captain's Logbook** - Track all planes spotted over time
+- **Dashboard view** - See all approaching aircraft with ETAs
+- **Smart polling** - Only active when clients connected
+- **PWA support** - Install as app on phones/tablets
+- **Dual language support** - Swedish/English family greetings
 
 ### Architecture
 
@@ -189,18 +195,16 @@ The app expects a "brum brum" sound file. To add it:
 - **Slow updates**: OpenSky API has rate limits
 - **High CPU usage**: Check if multiple server instances are running
 
-### Development Status
+### Recent Updates (June 2025)
 
-- ✅ Backend core (flight tracking, WebSocket API)
-- ✅ Frontend interface (display, animations, reconnection)
-- ✅ PWA features (manifest.json, icons, mobile web app)
-- ✅ HTTPS/WSS support (SSL certificates, secure WebSocket)
-- ✅ iOS device orientation (compass) support
-- ✅ Aircraft image scraping with caching
-- ✅ Unit tests for geometry calculations
-- ✅ Pre-commit hooks (black, isort, flake8)
-- ⏳ Production deployment optimization
-- ⏳ Service worker for offline support
+- ✅ **Captain's Logbook** - Persistent tracking of all spotted planes
+- ✅ **Simplified aircraft types** - Kid-friendly names like "Boeing 747 'Jumbo Jet'"
+- ✅ **Family voice greetings** - Personalized audio from family members
+- ✅ **Dual start buttons** - Choose your greeting preference
+- ✅ **Enhanced audio** - Simplified filenames (atc_1.mp3, etc.)
+- ✅ **Debug support** - Both raw and simplified aircraft types sent
+- ✅ **Improved compass** - Better iOS device orientation handling
+- ✅ **WebSocket reconnection** - Exponential backoff with jitter
 
 ## Deployment
 
@@ -302,26 +306,57 @@ source .venv/bin/activate
 pytest tests/ -v
 ```
 
-### Code Quality
+### Testing
 
-Pre-commit hooks are configured for:
-- Black (code formatting)
-- isort (import sorting)
-- Flake8 (linting)
-
-Run manually:
 ```bash
-pre-commit run --all-files
+# Run unit tests
+python -m pytest tests/ -v
+
+# Test geometry calculations
+python -m pytest tests/test_geometry.py -v
 ```
 
-### Contributing
+### Code Quality
+
+The project uses:
+- Black for code formatting
+- isort for import sorting  
+- Flake8 for linting
+- Type hints for better code clarity
+
+### Future Enhancements
+
+- **Performance**: Service worker for offline support
+- **Features**: Flight history statistics, weather integration
+- **Production**: Docker containers, proper SSL certificates
+- **Monitoring**: Add telemetry and alerting
+
+## Contributing
 
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
-4. Run tests and linting
+4. Run tests
 5. Submit a pull request
+
+## Project Structure
+
+```
+brum-brum-tracker/
+├── backend/          # Python WebSocket server
+│   ├── server.py     # Main WebSocket logic
+│   ├── app.py        # HTTP server entry
+│   └── app_ssl.py    # HTTPS server entry
+├── frontend/         # Web interface
+│   ├── index.html    # Main tracker view
+│   ├── dashboard.html # All planes view
+│   ├── logbook.html  # Captain's logbook
+│   └── assets/       # Audio and images
+├── utils/            # Helper functions
+├── tests/            # Unit tests
+└── serve*.py         # Frontend servers
+```
 
 ## License
 
-This project is for personal/educational use. See LICENSE file for details.
+MIT License - This project is open source for personal and educational use. See LICENSE file for details.

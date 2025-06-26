@@ -12,18 +12,31 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log('Connecting to WebSocket...');
         loadingMessage.classList.remove('hidden');
 
+        // Load cached data immediately
+        const cachedLog = getCachedLogbook();
+        if (cachedLog) {
+            console.log('Displaying cached logbook data.');
+            displayLogbook(cachedLog);
+            loadingMessage.classList.add('hidden');
+        }
+
         websocket = new WebSocket(WS_URL);
 
         websocket.onopen = () => {
             console.log('Connected! Requesting logbook data...');
-            websocket.send(JSON.stringify({ type: 'get_logbook' }));
+            // Provide a fallback to an empty string if 'logbookLastUpdate' is not set
+            const lastUpdate = localStorage.getItem('logbookLastUpdate') || '';
+            websocket.send(JSON.stringify({
+                type: 'get_logbook',
+                since: lastUpdate
+            }));
         };
 
         websocket.onmessage = (event) => {
             const data = JSON.parse(event.data);
             if (data.type === 'logbook_data') {
                 console.log('Received logbook data:', data.log);
-                displayLogbook(data.log);
+                updateLogbook(data.log); // New function to update the logbook
                 loadingMessage.classList.add('hidden');
             }
         };
@@ -37,6 +50,36 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log('WebSocket disconnected.');
         };
     }
+
+    function getCachedLogbook() {
+        const cachedData = localStorage.getItem('logbook');
+        return cachedData ? JSON.parse(cachedData) : null;
+    }
+
+    function setCachedLogbook(log) {
+        localStorage.setItem('logbook', JSON.stringify(log));
+        localStorage.setItem('logbookLastUpdate', new Date().toISOString());
+    }
+
+    function updateLogbook(newEntries) {
+        let log = getCachedLogbook() || [];
+
+        // Create a map for quick lookups
+        const logMap = new Map(log.map(entry => [entry.aircraft_type, entry]));
+
+        // Add or update entries
+        newEntries.forEach(entry => {
+            logMap.set(entry.aircraft_type, entry);
+        });
+
+        // Convert back to an array and sort by date
+        const updatedLog = Array.from(logMap.values());
+        updatedLog.sort((a, b) => new Date(b.first_spotted) - new Date(a.first_spotted));
+
+        setCachedLogbook(updatedLog);
+        displayLogbook(updatedLog);
+    }
+
 
     function displayLogbook(log) {
         grid.innerHTML = ''; // Clear previous entries

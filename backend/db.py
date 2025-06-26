@@ -74,12 +74,24 @@ class AircraftDatabase:
         """, (aircraft_type, image_url or ''))
         self.connection.commit()
 
-    def get_logbook(self) -> List[Dict[str, Any]]:
-        """Retrieve all entries from the logbook, ordered by most recent."""
+    def get_logbook(self, since: Optional[str] = None) -> List[Dict[str, Any]]:
+        """
+        Retrieve entries from the logbook, optionally filtering by date.
+        
+        Args:
+            since: An ISO 8601 timestamp. If provided, only entries newer
+                   than this timestamp are returned.
+        """
         cursor = self.connection.cursor()
-        cursor.execute(
-            "SELECT * FROM logbook ORDER BY first_spotted DESC"
-        )
+        if since:
+            cursor.execute(
+                "SELECT * FROM logbook WHERE first_spotted > ? ORDER BY first_spotted DESC",
+                (since,)
+            )
+        else:
+            cursor.execute(
+                "SELECT * FROM logbook ORDER BY first_spotted DESC"
+            )
         rows = cursor.fetchall()
         return [dict(row) for row in rows]
     
@@ -175,10 +187,10 @@ def save_aircraft_to_cache(record: Dict[str, Any]) -> None:
     with AircraftDatabase() as db:
         db.save_aircraft_to_cache(record)
 
-def get_logbook() -> List[Dict[str, Any]]:
+def get_logbook(since: Optional[str] = None) -> List[Dict[str, Any]]:
     """Retrieve all logbook entries."""
     with AircraftDatabase() as db:
-        return db.get_logbook()
+        return db.get_logbook(since=since)
 
 def add_to_logbook(aircraft_type: str, image_url: str) -> None:
     """Add an entry to the logbook."""

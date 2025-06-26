@@ -120,17 +120,65 @@ const audioConfig = {
         'assets/wwe_brum.wav',
     ],
     'atc_sounds': [
-        'assets/atc_sound_1.mp3',
-        'assets/atc_sound_2.mp3',
-        'assets/atc_sound_3.mp3',
-        'assets/atc_sound_4.mp3',
-        'assets/atc_sound_5.mp3',
+        'assets/atc_1.mp3',
+        'assets/atc_2.mp3',
+        'assets/atc_3.mp3',
+        'assets/atc_4.mp3',
+        'assets/atc_5.mp3',
     ]
 };
 
 let activeBrumSet = [];
 let atcAudioSet = [];
 const ATC_SOUND_CHANCE = 0.2; // 20% chance to play an ATC sound
+
+function resetUI() {
+    console.log('Resetting UI to initial state.');
+
+    // Show the start overlay and hide the main app content
+    elements.startOverlay.style.display = 'flex';
+    elements.appContainer.classList.add('hidden');
+
+    // Disconnect the WebSocket if it's open to ensure a clean start
+    if (websocket && websocket.readyState === WebSocket.OPEN) {
+        console.log('Closing existing WebSocket connection during UI reset.');
+        // Use code 1000 for a normal closure. Don't schedule a reconnect.
+        websocket.onclose = null; // Prevent the default reconnect logic from firing
+        websocket.close(1000, "Navigating away");
+        websocket = null;
+    }
+
+    // Reset connection status indicator
+    updateConnectionStatus('disconnected');
+}
+
+/**
+ * Re-creates the start buttons and attaches fresh event listeners.
+ * This is a robust way to solve issues with the back-forward cache.
+ */
+function rebindStartButtons() {
+    console.log('Re-binding event listeners to start buttons.');
+
+    // Function to replace a button and re-attach its listener
+    const rebind = (buttonId, audioSetKey) => {
+        const oldButton = document.getElementById(buttonId);
+        if (!oldButton) return;
+
+        // Create a new button by cloning the old one
+        const newButton = oldButton.cloneNode(true);
+
+        // Replace the old button with the new one in the DOM
+        oldButton.parentNode.replaceChild(newButton, oldButton);
+
+        // Add a fresh event listener to the new button
+        newButton.addEventListener('click', () => {
+            startTracking(audioSetKey);
+        });
+    };
+
+    rebind('start-button-mamma-pappa', 'mamma_pappa');
+    rebind('start-button-mormor-pops', 'mormor_pops');
+}
 
 
 /**
@@ -143,19 +191,23 @@ function init() {
     // Detect iOS
     isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
 
-    // Initial UI state is handled by the start overlay
-
-    // Setup the start buttons
-    elements.startButtonMammaPappa.addEventListener('click', () => {
-        startTracking('mamma_pappa');
-    });
-
-    elements.startButtonMormorPops.addEventListener('click', () => {
-        startTracking('mormor_pops');
-    });
+    // Attach event listeners for the first time
+    rebindStartButtons();
 
     // Handle visibility changes
     document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // This listener detects when the page is shown, including from the back-forward cache.
+    window.addEventListener('pageshow', function (event) {
+        // event.persisted is true if the page was loaded from the bfcache.
+        if (event.persisted) {
+            console.log('Page was loaded from the bfcache. Resetting UI and re-binding listeners.');
+            // Manually reset the UI to the start screen.
+            resetUI();
+            // Re-bind listeners to ensure they are active.
+            rebindStartButtons();
+        }
+    });
 }
 
 /**

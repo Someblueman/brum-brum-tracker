@@ -82,6 +82,9 @@ events.log
 *.key
 *.cert
 backend/aircraft_cache.db*
+backend/*.db
+backend/*.db-shm
+backend/*.db-wal
 
 # Serena agent files
 .serena/

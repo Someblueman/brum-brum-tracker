@@ -399,9 +399,9 @@ class AircraftTracker:
                     data = json.loads(message)
                     logger.debug(f"Received from client: {data}")
                     
-                    # ** ADD THIS BLOCK to handle logbook requests **
                     if data.get('type') == 'get_logbook':
-                        log_data = get_logbook()
+                        since = data.get('since') if data.get('since') else None
+                        log_data = get_logbook(since=since) # Pass it to the get_logbook function
                         response = {
                             'type': 'logbook_data',
                             'log': log_data

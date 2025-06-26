@@ -297,7 +297,7 @@ body {
     position: relative;
     width: 220px;
     height: 220px;
-    margin-bottom: 40px;
+    margin-bottom: 50px;
 }
 
 #arrow-animator {
@@ -333,7 +333,7 @@ body {
 
 #distance-display {
     position: absolute;
-    bottom: -20px;
+    bottom: -30px;
     left: 50%;
     transform: translateX(-50%);
     background: #FF6347;
@@ -378,6 +378,39 @@ body {
     position: relative;
     z-index: 10;
 }
+
+.stacked-aircraft {
+    /* This is the key fix: it allows z-index to work */
+    position: absolute;
+
+    /* Make the stacked images slightly smaller */
+    max-width: 95%;
+    max-height: 95%;
+
+    /* Copy the visual style from the main image */
+    object-fit: contain;
+    background: rgba(255, 255, 255, 0.5);
+    border-radius: 20px;
+    padding: 10px;
+    border: 4px solid white;
+    transition: transform 0.3s ease;
+}
+
+/* Fan out the second plane in the stack */
+#aircraft-stack .stacked-aircraft:nth-of-type(2) {
+    transform: rotate(-6deg) translateX(-20px);
+}
+
+/* Fan out the third plane in the stack */
+#aircraft-stack .stacked-aircraft:nth-of-type(3) {
+    transform: rotate(6deg) translateX(20px);
+}
+
+/* Fan out the fourth plane in the stack */
+#aircraft-stack .stacked-aircraft:nth-of-type(4) {
+    transform: rotate(-10deg) translateX(-40px);
+}
+
 
 #callsign-display {
     position: absolute;
