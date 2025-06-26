@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Brum Brum">
+    <meta name="theme-color" content="#87CEEB">
+    <title>Brum Brum Tracker</title>
+
+    <link rel="icon" type="image/png" href="assets/icon-192.png">
+    <link rel="shortcut icon" href="assets/icon-192.png">
+
+    <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+
+    <link rel="apple-touch-icon" href="assets/icon-192.png">
+    <link rel="apple-touch-icon" sizes="192x192" href="assets/icon-192.png">
+    <link rel="apple-touch-icon" sizes="512x512" href="assets/icon-512.png">
+</head>
+
+<body>
+    <div id="start-overlay">
+        <div id="welcome-text">
+            <h1>Welcome, Captain Theodore!</h1>
+            <p>Ready to find the brum brums?</p>
+        </div>
+        <div id="start-buttons">
+            <button id="start-button-mamma-pappa">Start Tracking with Mamma & Pappa</button>
+            <button id="start-button-mormor-pops">Start Tracking with Mormor & Pops</button>
+        </div>
+    </div>
+
+    <div id="map"></div>
+    <div id="cloud-container">
+        <div class="cloud cloud-1"></div>
+        <div class="cloud cloud-2"></div>
+        <div class="cloud cloud-3"></div>
+        <div class="cloud cloud-4"></div>
+    </div>
+
+    <div id="app" class="hidden">
+        <div id="connection-status" class="disconnected">
+            <span class="status-dot"></span>
+            <span class="status-text">Connecting...</span>
+        </div>
+
+        <button id="enable-compass-btn" class="hidden">Enable Compass</button>
+        <span id="compass-indicator" class="compass-off">Compass: Off</span>
+
+        <div id="main-display" class="hidden">
+            <div id="arrow-container">
+                <div id="arrow-animator">
+                    <div id="direction-arrow">▲</div>
+                </div>
+            </div>
+
+            <div id="aircraft-container">
+                <img id="plane-image" src="" alt="Aircraft">
+                <div id="distance-display">--</div>
+                <div id="callsign-display">--</div>
+                <div id="type-display" class="hidden">--</div>
+            </div>
+
+            <div id="flight-details">
+                <div id="altitude-display">--</div>
+                <div id="speed-display">--</div>
+            </div>
+
+            <div id="route-info">
+                <div id="origin-info" class="route-endpoint hidden">
+                    <span class="route-label">From:</span>
+                    <span id="origin-flag"></span>
+                    <span id="origin-country"></span>
+                </div>
+                <div id="destination-info" class="route-endpoint hidden">
+                    <span class="route-label">To:</span>
+                    <span id="destination-flag"></span>
+                    <span id="destination-country"></span>
+                </div>
+            </div>
+
+            <div id="control-buttons">
+                <button id="logbook-button" onclick="window.location.href='logbook.html'">Captain's Logbook</button>
+                <a href="/dashboard.html" id="dashboard-link">All Planes</a>
+            </div>
+
+            <div id="aircraft-stack" class="hidden">
+                <div id="aircraft-count">
+                    <span id="count-number">0</span> nearby
+                </div>
+            </div>
+
+            <div id="session-tracker" class="hidden">
+                <div id="session-count">
+                    Spotted: <span id="session-count-number">0</span>
+                </div>
+            </div>
+        </div>
+
+        <div id="no-aircraft" class="hidden">
+            <h2 id="no-aircraft-title">Scanning the skies...</h2>
+            <p id="no-aircraft-subtitle">Looking for brum brums!</p>
+        </div>
+
+        <audio id="unlock-sound"
+            src="data:audio/mp3;base64,SUQzBAAAAAABEVRYWFgAAAAtAAADY29tbWVudABCaWdTb3VuZEJhbmsuY29tIC8gTGliAv2/4+AqASwAAAAAAAZTTTE5dAAAAANIAAAAAAAAAd2Rmdg=="
+            preload="auto"></audio>
+        
+        <audio id="atc-sound" src="assets/atc_1.mp3" preload="auto"></audio>
+        <audio id="aircraft-sound" preload="auto"></audio>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script type="module" src="main-refactored.js?v=20250626.4"></script>
+</body>
+
+</html>

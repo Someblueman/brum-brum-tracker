@@ -3,9 +3,9 @@
  * Handles WebSocket connection, device orientation, and UI updates
  */
 
-// Map configuration - matches backend constants
-const HOME_LAT = 51.2792;
-const HOME_LON = 1.2836;
+// Map configuration - will be loaded from backend
+let HOME_LAT = null;
+let HOME_LON = null;
 
 // Initialize map
 let map = null;
@@ -225,7 +225,7 @@ function rebindStartButtons() {
  */
 function init() {
     console.log("Application initializing...");
-    initializeMap();
+    // Map will be initialized after config is loaded from backend
 
     isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
 
@@ -281,6 +281,45 @@ function startTracking(audioSetKey) {
 }
 
 /**
+ * Load configuration from backend
+ */
+async function loadConfigFromBackend() {
+    return new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => {
+            reject(new Error('Config request timeout'));
+        }, 5000);
+        
+        const handleMessage = (event) => {
+            try {
+                const data = JSON.parse(event.data);
+                if (data.type === 'config') {
+                    clearTimeout(timeout);
+                    
+                    // Update configuration with backend values
+                    if (data.config && data.config.home) {
+                        HOME_LAT = data.config.home.lat;
+                        HOME_LON = data.config.home.lon;
+                    }
+                    
+                    // Remove the event listener
+                    websocket.removeEventListener('message', handleMessage);
+                    
+                    resolve();
+                }
+            } catch (error) {
+                console.error('Error parsing config response:', error);
+            }
+        };
+        
+        // Add event listener
+        websocket.addEventListener('message', handleMessage);
+        
+        // Request configuration
+        websocket.send(JSON.stringify({ type: 'get_config' }));
+    });
+}
+
+/**
  * Set up WebSocket connection
  */
 function setupWebSocket() {
@@ -294,9 +333,30 @@ function setupWebSocket() {
     try {
         websocket = new WebSocket(WEBSOCKET_URL);
 
-        websocket.onopen = () => {
+        websocket.onopen = async () => {
             const timestamp = new Date().toISOString();
             console.log(`WEBSOCKET CONNECTED: ${timestamp} (attempt #${reconnectAttempts + 1})`);
+            
+            // Load configuration from backend if not already loaded
+            if (HOME_LAT === null || HOME_LON === null) {
+                try {
+                    console.log('Loading configuration from backend...');
+                    await loadConfigFromBackend();
+                    console.log(`Configuration loaded: HOME_LAT=${HOME_LAT}, HOME_LON=${HOME_LON}`);
+                    
+                    // Initialize map after config is loaded
+                    if (map === null) {
+                        initializeMap();
+                    }
+                } catch (error) {
+                    console.error('Failed to load configuration:', error);
+                    // Use fallback values if config loading fails
+                    HOME_LAT = 51.2792;
+                    HOME_LON = 1.2836;
+                    console.log('Using fallback coordinates');
+                }
+            }
+            
             updateConnectionStatus('connected');
             clearTimeout(reconnectTimeout);
             reconnectAttempts = 0; // Reset attempts on successful connection
