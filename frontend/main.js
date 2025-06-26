@@ -104,6 +104,13 @@ const elements = {
     destinationCountry: document.getElementById('destination-country'),
 };
 
+// Check for missing elements
+Object.entries(elements).forEach(([key, element]) => {
+    if (!element) {
+        console.warn(`Missing element: ${key}`);
+    }
+});
+
 // Audio Configuration
 const audioConfig = {
     'mamma_pappa': [
@@ -424,11 +431,11 @@ function updateAircraftDisplay(aircraft) {
     elements.noAircraft.classList.add('hidden');
 
     // Update aircraft information
-    elements.distanceDisplay.textContent = `${aircraft.distance_km} km`;
-    elements.callsignDisplay.textContent = aircraft.callsign || aircraft.icao24;
-    elements.altitudeDisplay.textContent = `${aircraft.altitude_ft.toLocaleString()} ft`;
-    elements.speedDisplay.textContent = `${Math.round(aircraft.speed_kmh)} km/h`;
-    elements.typeDisplay.textContent = aircraft.aircraft_type || 'Unknown';
+    if (elements.distanceDisplay) elements.distanceDisplay.textContent = `${aircraft.distance_km} km`;
+    if (elements.callsignDisplay) elements.callsignDisplay.textContent = aircraft.callsign || aircraft.icao24;
+    if (elements.altitudeDisplay) elements.altitudeDisplay.textContent = `${aircraft.altitude_ft.toLocaleString()} ft`;
+    if (elements.speedDisplay) elements.speedDisplay.textContent = `${Math.round(aircraft.speed_kmh)} km/h`;
+    if (elements.typeDisplay) elements.typeDisplay.textContent = aircraft.aircraft_type || 'Unknown';
 
     // Update aircraft image
     if (aircraft.image_url) {

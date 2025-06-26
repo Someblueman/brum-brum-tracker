@@ -247,7 +247,7 @@ class FlightDataClient:
         Returns:
             List of aircraft state dictionaries
         """
-        USE_MOCK_DATA = True
+        USE_MOCK_DATA = False
 
         if USE_MOCK_DATA:
             return _get_mock_aircraft_state()

@@ -168,6 +168,13 @@ class AircraftDatabase:
         ))
         self.connection.commit()
     
+    def clear_aircraft_cache(self, icao24: str) -> None:
+        """Remove a specific aircraft from cache."""
+        cursor = self.connection.cursor()
+        cursor.execute("DELETE FROM cache WHERE icao24 = ?", (icao24.lower(),))
+        self.connection.commit()
+        logger.info(f"Cleared cache for aircraft {icao24}")
+    
     def close(self) -> None:
         """Close database connection."""
         if self.connection:
@@ -225,3 +232,8 @@ def add_to_logbook(aircraft_type: str, image_url: str) -> None:
     """Add an entry to the logbook."""
     with AircraftDatabase() as db:
         db.add_to_logbook(aircraft_type, image_url)
+
+def clear_aircraft_cache(icao24: str) -> None:
+    """Clear cache for a specific aircraft."""
+    with AircraftDatabase() as db:
+        db.clear_aircraft_cache(icao24)
