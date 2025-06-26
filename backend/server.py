@@ -102,7 +102,7 @@ def _simplify_aircraft_type(type_string: Optional[str]) -> str:
     if "EMBRAER" in type_string_upper: return "Embraer Aircraft"
     
     # Final fallback for anything else
-    return "Prop Plane"
+    return "Unknown Model"
 
 class AircraftTracker:
     """Manages aircraft tracking and WebSocket connections."""
@@ -311,36 +311,26 @@ class AircraftTracker:
                         await self.broadcast_message(list_message)
                         logger.debug(f"Sent approaching aircraft list: {list_message['aircraft_count']} planes")
                     
-                    # Select best aircraft for main display
-                    best_aircraft = select_best_plane(visible)
-                    
-                    if best_aircraft:
-                        # Format message with all visible aircraft
-                        message = self.format_aircraft_message(best_aircraft)
+                    if visible:
+                        # Format all visible planes
+                        all_visible_formatted = [self.format_aircraft_message(a) for a in visible]
                         
-                        # Add all visible aircraft to the message
-                        all_visible_formatted = []
-                        for aircraft in visible:
-                            formatted = self.format_aircraft_message(aircraft)
-                            all_visible_formatted.append(formatted)
-                        
-                        # Sort by distance
+                        # Sort them by distance to find the closest
                         all_visible_formatted.sort(key=lambda x: x['distance_km'])
                         
-                        # Update message to include all aircraft
-                        message['type'] = 'aircraft_update'
-                        message['closest'] = message.copy()
-                        message['all_aircraft'] = all_visible_formatted
-                        
+                        # The closest plane is now always the first in the list.
+                        # We send the whole list, and the frontend will know what to do.
+                        message = {
+                            'type': 'aircraft_update',
+                            'all_aircraft': all_visible_formatted
+                        }
                         await self.broadcast_message(message)
                         
-                        # Log event
-                        logger.info(f"Sent aircraft update: {best_aircraft['icao24']} "
-                                  f"at {best_aircraft['distance_km']:.1f}km, "
-                                  f"{best_aircraft['elevation_angle']:.1f}° elevation "
-                                  f"(total visible: {len(visible)})")
+                        # Log the event with the new primary aircraft
+                        closest_plane = all_visible_formatted[0]
+                        logger.info(f"Sent aircraft update, closest is: {closest_plane['icao24']} "
+                                  f"at {closest_plane['distance_km']:.1f}km")
                         
-                        # Store last aircraft data
                         self.last_aircraft_data = message
                     else:
                         # Send "no aircraft" message if we previously had one

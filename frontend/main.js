@@ -85,19 +85,53 @@ const elements = {
     altitudeDisplay: document.getElementById('altitude-display'),
     speedDisplay: document.getElementById('speed-display'),
     typeDisplay: document.getElementById('type-display'),
-    atcSounds: [
-        document.getElementById('atc-sound-1'),
-        document.getElementById('atc-sound-2'),
-        document.getElementById('atc-sound-3'),
-        document.getElementById('atc-sound-4'),
-        document.getElementById('atc-sound-5')
-    ],
     compassIndicator: document.getElementById('compass-indicator'),
     startButton: document.getElementById('start-button'),
     startOverlay: document.getElementById('start-overlay'),
     appContainer: document.getElementById('app'),
-    unlockSound: document.getElementById('unlock-sound')
+    unlockSound: document.getElementById('unlock-sound'),
+    startButtonMammaPappa: document.getElementById('start-button-mamma-pappa'),
+    startButtonMormorPops: document.getElementById('start-button-mormor-pops'),
+    startOverlay: document.getElementById('start-overlay'),
 };
+
+// Audio Configuration
+const audioConfig = {
+    'mamma_pappa': [
+        'assets/mamma_brum.wav',
+        'assets/pappa_swedish_brum.wav',
+        'assets/bbc_voice_brum.wav',
+        'assets/brum.wav',
+        'assets/brum_brum.wav',
+        'assets/get_ready_brum.wav',
+        'assets/look_sky_brum.wav',
+        'assets/sky_brum_brum.wav',
+        'assets/wwe_brum.wav',
+    ],
+    'mormor_pops': [
+        'assets/mormor_brum.wav',
+        'assets/pops_brum.wav',
+        'assets/bbc_voice_brum.wav',
+        'assets/brum.wav',
+        'assets/brum_brum.wav',
+        'assets/get_ready_brum.wav',
+        'assets/look_sky_brum.wav',
+        'assets/sky_brum_brum.wav',
+        'assets/wwe_brum.wav',
+    ],
+    'atc_sounds': [
+        'assets/atc_sound_1.mp3',
+        'assets/atc_sound_2.mp3',
+        'assets/atc_sound_3.mp3',
+        'assets/atc_sound_4.mp3',
+        'assets/atc_sound_5.mp3',
+    ]
+};
+
+let activeBrumSet = [];
+let atcAudioSet = [];
+const ATC_SOUND_CHANCE = 0.2; // 20% chance to play an ATC sound
+
 
 /**
  * Initialize the application
@@ -111,24 +145,50 @@ function init() {
 
     // Initial UI state is handled by the start overlay
 
-    // Setup the start button
-    elements.startButton.addEventListener('click', () => {
-        elements.startOverlay.style.display = 'none';
-        elements.appContainer.classList.remove('hidden');
+    // Setup the start buttons
+    elements.startButtonMammaPappa.addEventListener('click', () => {
+        startTracking('mamma_pappa');
+    });
 
-        // Unlock audio
-        elements.unlockSound.play().catch(e => console.error("Could not play unlock sound:", e));
-
-        // Start the main app logic
-        showSearching();
-        setupWebSocket();
-        setupOrientationHandling();
+    elements.startButtonMormorPops.addEventListener('click', () => {
+        startTracking('mormor_pops');
     });
 
     // Handle visibility changes
     document.addEventListener('visibilitychange', handleVisibilityChange);
 }
 
+/**
+ * Start the tracking experience
+ * @param {string} audioSetKey - The key for the selected audio set
+ */
+function startTracking(audioSetKey) {
+    elements.startOverlay.style.display = 'none';
+    elements.appContainer.classList.remove('hidden');
+
+    // Set the active audio files
+    activeBrumSet = audioConfig[audioSetKey].map(src => {
+        const audio = new Audio(src);
+        audio.preload = 'auto';
+        return audio;
+    });
+
+    // Load the ATC sounds
+    atcAudioSet = audioConfig['atc_sounds'].map(src => {
+        const audio = new Audio(src);
+        audio.preload = 'auto';
+        return audio;
+    });
+
+
+    // Unlock audio
+    elements.unlockSound.play().catch(e => console.error("Could not play unlock sound:", e));
+
+    // Start the main app logic
+    showSearching();
+    setupWebSocket();
+    setupOrientationHandling();
+}
 
 /**
  * Set up WebSocket connection
@@ -253,20 +313,19 @@ function handleMessage(data) {
  * Handle aircraft update message
  */
 function handleAircraftUpdate(data) {
-    // Store all aircraft data
-    if (data.all_aircraft) {
+    // The backend now sends a single, reliable list sorted by distance
+    if (data.all_aircraft && data.all_aircraft.length > 0) {
         allAircraft = data.all_aircraft;
+
+        // The main aircraft to display is ALWAYS the first one in the list (the closest)
+        const mainAircraft = allAircraft[0];
+
+        updateAircraftDisplay(mainAircraft);
+        updateAircraftStack(); // This will show the others
     } else {
-        // Fallback for backward compatibility
-        allAircraft = [data];
+        // This can happen if the message is malformed, treat as no aircraft
+        showNoAircraft();
     }
-
-    // Display the closest aircraft
-    const closestAircraft = data.closest || data;
-    updateAircraftDisplay(closestAircraft);
-
-    // Update stack display
-    updateAircraftStack();
 }
 
 /**
@@ -435,30 +494,42 @@ function updateArrowRotation(planeBearing) {
  * Play notification sound and add glow effect
  */
 function playNotification() {
-    // Play random ATC sound
-    const randomIndex = Math.floor(Math.random() * elements.atcSounds.length);
-    const selectedSound = elements.atcSounds[randomIndex];
-    const soundFile = selectedSound.src.split('/').pop();
+    let soundToPlay = null;
 
-    console.log(`AUDIO: Attempting to play sound ${randomIndex + 1}/${elements.atcSounds.length}: ${soundFile}`);
+    // Decide whether to play a regular sound or an ATC sound
+    if (Math.random() < ATC_SOUND_CHANCE && atcAudioSet.length > 0) {
+        // Play an ATC sound
+        const randomIndex = Math.floor(Math.random() * atcAudioSet.length);
+        soundToPlay = atcAudioSet[randomIndex];
+        console.log('Decided to play an ATC sound.');
+    } else if (activeBrumSet.length > 0) {
+        // Play a regular "brum" sound
+        const randomIndex = Math.floor(Math.random() * activeBrumSet.length);
+        soundToPlay = activeBrumSet[randomIndex];
+        console.log('Decided to play a Brum sound.');
+    }
 
-    selectedSound.play()
-        .then(() => {
-            console.log(`AUDIO: Successfully played ${soundFile}`);
-        })
-        .catch(error => {
-            console.error(`AUDIO: Failed to play ${soundFile} - ${error.name}: ${error.message}`);
-            // Common errors: NotAllowedError (no user interaction), NotSupportedError (format issue)
-        });
+    if (soundToPlay) {
+        const soundFile = soundToPlay.src.split('/').pop();
+        console.log(`AUDIO: Attempting to play sound: ${soundFile}`);
+
+        soundToPlay.play()
+            .then(() => {
+                console.log(`AUDIO: Successfully played ${soundFile}`);
+            })
+            .catch(error => {
+                console.error(`AUDIO: Failed to play ${soundFile} - ${error.name}: ${error.message}`);
+            });
+    }
 
     // Add glow effect TO THE WRAPPER
-    elements.arrowAnimator.classList.add('glow'); // Change this line
+    elements.arrowAnimator.classList.add('glow');
     console.log('UI: Added glow effect to arrow');
 
     // Remove glow after duration
     clearTimeout(glowTimeout);
     glowTimeout = setTimeout(() => {
-        elements.arrowAnimator.classList.remove('glow'); // and this line
+        elements.arrowAnimator.classList.remove('glow');
         console.log('UI: Removed glow effect from arrow');
     }, GLOW_DURATION);
 }

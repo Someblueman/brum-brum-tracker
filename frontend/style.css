@@ -209,22 +209,37 @@ body {
     opacity: 0.9;
 }
 
-#start-button {
+#start-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+#start-button-mamma-pappa,
+#start-button-mormor-pops {
     padding: 20px 40px;
-    font-size: 24px;
+    font-size: 20px;
     font-family: 'Fredoka One', cursive;
     cursor: pointer;
-    background-color: #FF6347;
-    /* Tomato color */
     color: white;
     border: none;
     border-radius: 50px;
-    /* More rounded */
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
     transition: all 0.2s ease-in-out;
 }
 
-#start-button:hover {
+#start-button-mamma-pappa {
+    background-color: #FF6347;
+    /* Tomato color */
+}
+
+#start-button-mormor-pops {
+    background-color: #3b82f6;
+    /* Blue color */
+}
+
+#start-button-mamma-pappa:hover,
+#start-button-mormor-pops:hover {
     transform: translateY(-3px);
     box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
 }
@@ -496,12 +511,16 @@ body {
 /* Compass Indicator */
 .compass-status {
     position: absolute;
-    top: -20px;
+    top: -25px;
+    left: 50%;
+    transform: translateX(-50%);
     font-size: 12px;
     color: #666;
     background: rgba(255, 255, 255, 0.8);
-    padding: 4px 8px;
+    padding: 4px 10px;
     border-radius: 10px;
+    white-space: nowrap;
+    z-index: 10;
 }
 
 /* Utility Classes */

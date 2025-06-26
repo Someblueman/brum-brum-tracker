@@ -83,7 +83,6 @@ class FlightDataClient:
         logger.debug(f"HTTP request to {url} with params: {params}")
         
         try:
-            # Add OAuth2 authentication if available
             headers = {}
             token = self._get_oauth_token()
             if token:
@@ -94,9 +93,7 @@ class FlightDataClient:
             
             response = self.session.get(url, params=params, headers=headers, timeout=30)
             
-            # Log response details for debugging
             logger.debug(f"Response headers: {dict(response.headers)}")
-            
             response.raise_for_status()
             
             data = response.json()
@@ -107,13 +104,21 @@ class FlightDataClient:
                 logger.warning(f"Unexpected response format: {type(data)}")
                 return []
             
-            states = data.get('states', [])
+            states = data.get('states') # Get the states, may be None
+            
+            # --- THIS IS THE FIX ---
+            # If states is None (null in JSON), treat it as an empty list
+            if states is None:
+                logger.info("Received null for states, treating as 0 aircraft.")
+                states = []
+            # --- END OF FIX ---
+
             logger.info(f"Received {len(states)} states from HTTP API")
             
             # Convert raw state arrays to dictionaries
             aircraft_list = []
             for idx, state in enumerate(states):
-                if len(state) < 17:  # Ensure we have all fields
+                if len(state) < 17:
                     continue
                     
                 aircraft = {
@@ -136,7 +141,6 @@ class FlightDataClient:
                     'position_source': state[16]
                 }
                 
-                # Debug first few aircraft
                 if idx < 3:
                     logger.debug(f"Aircraft {idx}: {aircraft['icao24']}, "
                                f"pos=({aircraft['latitude']}, {aircraft['longitude']}), "
