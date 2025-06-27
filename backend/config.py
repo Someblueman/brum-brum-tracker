@@ -5,7 +5,7 @@ All configuration values should be accessed through this module.
 
 import os
 from pathlib import Path
-from typing import Optional, List
+from typing import List
 from dotenv import load_dotenv
 
 

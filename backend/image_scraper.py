@@ -2,13 +2,9 @@
 Aircraft image scraper for fetching photos from planespotters.net
 """
 import logging
-import re
-import time
-from typing import Dict, Optional, Tuple
-from urllib.parse import quote
+from typing import Dict, Optional
 
 import requests
-from bs4 import BeautifulSoup
 
 from backend.db import get_aircraft_from_cache, save_aircraft_to_cache
 
@@ -18,7 +14,6 @@ logger = logging.getLogger(__name__)
 PLANESPOTTERS_BASE_URL = "https://www.planespotters.net"
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
 REQUEST_TIMEOUT = 10
-RATE_LIMIT_DELAY = 1  # Seconds between requests to be respectful
 
 
 # --- START OF FIX ---

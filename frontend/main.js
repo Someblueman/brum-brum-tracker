@@ -7,8 +7,6 @@
 let HOME_LAT = null;
 let HOME_LON = null;
 
-// Initialize map
-let map = null;
 
 // Register Service Worker
 if ('serviceWorker' in navigator) {
@@ -100,7 +98,6 @@ const elements = {
     unlockSound: document.getElementById('unlock-sound'),
     startButtonMammaPappa: document.getElementById('start-button-mamma-pappa'),
     startButtonMormorPops: document.getElementById('start-button-mormor-pops'),
-    startOverlay: document.getElementById('start-overlay'),
     sessionTracker: document.getElementById('session-tracker'),
     sessionCountNumber: document.getElementById('session-count-number'),
     originInfo: document.getElementById('origin-info'),
@@ -1041,37 +1038,6 @@ function cleanupOldAircraftData() {
 
 // Start periodic cleanup
 setInterval(cleanupOldAircraftData, AIRCRAFT_CLEANUP_INTERVAL);
-
-/**
- * Initialize the Leaflet map
- */
-function initializeMap() {
-    try {
-        // Create map with all interactions disabled
-        map = L.map('map', {
-            center: [HOME_LAT, HOME_LON],
-            zoom: 9,
-            zoomControl: false,
-            dragging: false,
-            touchZoom: false,
-            scrollWheelZoom: false,
-            doubleClickZoom: false,
-            boxZoom: false,
-            keyboard: false,
-            tap: false,
-            attributionControl: false
-        });
-
-        // Add a simple, clean tile layer
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png', {
-            maxZoom: 19
-        }).addTo(map);
-
-    } catch (error) {
-        console.error('Error initializing map:', error);
-        document.getElementById('map').style.display = 'none'; // Hide map on error
-    }
-}
 
 // Initialize when DOM is ready
 if (document.readyState === 'loading') {

@@ -13,7 +13,6 @@ const RECONNECT_DELAY = 3000;
 // State
 let ws = null;
 let reconnectTimeout = null;
-let aircraftData = [];
 
 // DOM Elements
 const connectionIndicator = document.getElementById('connection-indicator');
@@ -93,8 +92,6 @@ function handleMessage(data) {
  * Update the aircraft list display
  */
 function updateAircraftList(aircraft) {
-    aircraftData = aircraft;
-    
     // Clear existing rows
     aircraftList.innerHTML = '';
     

@@ -7,7 +7,6 @@ import time
 from collections import defaultdict, deque
 from typing import Dict, Deque, Optional
 import asyncio
-from datetime import datetime, timedelta
 
 
 class RateLimitExceeded(Exception):
