@@ -140,6 +140,8 @@ class AircraftTracker:
     def __init__(self):
         """Initialize the tracker."""
         self.connected_clients: Set[WebSocketServerProtocol] = set()
+        self.tracking_clients: Set[WebSocketServerProtocol] = set()  # Clients that need aircraft updates
+        self.client_types: Dict[WebSocketServerProtocol, str] = {}  # Track client types
         self.last_aircraft_data: Optional[Dict[str, Any]] = None
         self.is_polling = False
         self.spotted_aircraft: Set[str] = set()  # Track all aircraft we've ever seen
@@ -277,22 +279,25 @@ class AircraftTracker:
                 
                 return message
     
-    async def broadcast_message(self, message: Dict[str, Any]) -> None:
+    async def broadcast_message(self, message: Dict[str, Any], tracking_only: bool = True) -> None:
         """
-        Broadcast a message to all connected clients.
+        Broadcast a message to connected clients.
         
         Args:
             message: Message dictionary to send
+            tracking_only: If True, only send to tracking clients (default True)
         """
-        if not self.connected_clients:
+        clients_to_notify = self.tracking_clients if tracking_only else self.connected_clients
+        
+        if not clients_to_notify:
             return
         
         # Serialize message
         message_json = json.dumps(message)
         
-        # Send to all connected clients
+        # Send to appropriate clients
         disconnected_clients = set()
-        for client in self.connected_clients:
+        for client in clients_to_notify:
             try:
                 await client.send(message_json)
             except websockets.exceptions.ConnectionClosed:
@@ -301,11 +306,30 @@ class AircraftTracker:
                 logger.error(f"Error sending to client: {e}")
                 disconnected_clients.add(client)
         
-        # Remove disconnected clients
+        # Remove disconnected clients from all sets
         self.connected_clients -= disconnected_clients
+        self.tracking_clients -= disconnected_clients
+        for client in disconnected_clients:
+            self.client_types.pop(client, None)
         
         if disconnected_clients:
             logger.info(f"Removed {len(disconnected_clients)} disconnected clients")
+    
+    async def _set_default_client_type(self, websocket: WebSocketServerProtocol) -> None:
+        """Set default client type if not identified within timeout."""
+        await asyncio.sleep(5)  # Wait 5 seconds for identification
+        
+        if websocket in self.connected_clients and websocket not in self.client_types:
+            # Default to tracker client if not identified
+            logger.info("Client didn't identify - defaulting to tracker")
+            self.client_types[websocket] = 'tracker'
+            self.tracking_clients.add(websocket)
+            
+            # Start polling if this is the first tracking client
+            if len(self.tracking_clients) == 1 and not self.is_polling:
+                self.is_polling = True
+                self.polling_task = asyncio.create_task(self.polling_loop())
+                logger.info("Started polling for unidentified client (defaulted to tracker)")
     
     async def polling_loop(self) -> None:
         """Main polling loop for fetching aircraft data."""
@@ -440,10 +464,9 @@ class AircraftTracker:
             }
             await websocket.send(json.dumps(searching_msg))
         
-        # Start polling if this is the first client
-        if len(self.connected_clients) == 1 and not self.is_polling:
-            self.is_polling = True
-            self.polling_task = asyncio.create_task(self.polling_loop())
+        # Don't start polling yet - wait for client identification
+        # Default to tracking client if not identified within 5 seconds
+        asyncio.create_task(self._set_default_client_type(websocket))
         
         try:
             # Keep connection alive and handle messages
@@ -453,7 +476,24 @@ class AircraftTracker:
                     data = json.loads(message)
                     logger.debug(f"Received from client: {data}")
                     
-                    if data.get('type') == 'get_logbook':
+                    if data.get('type') == 'client_identify':
+                        client_type = data.get('client_type', 'tracker')
+                        self.client_types[websocket] = client_type
+                        logger.info(f"Client identified as: {client_type}")
+                        
+                        if client_type in ['tracker', 'dashboard']:
+                            # This is a tracking client
+                            self.tracking_clients.add(websocket)
+                            
+                            # Start polling if this is the first tracking client
+                            if len(self.tracking_clients) == 1 and not self.is_polling:
+                                self.is_polling = True
+                                self.polling_task = asyncio.create_task(self.polling_loop())
+                                logger.info("Started polling for first tracking client")
+                        else:
+                            logger.info(f"Non-tracking client connected: {client_type}")
+                            
+                    elif data.get('type') == 'get_logbook':
                         since = data.get('since') if data.get('since') else None
                         log_data = get_logbook(since=since) # Pass it to the get_logbook function
                         response = {
@@ -476,11 +516,13 @@ class AircraftTracker:
         except Exception as e:
             logger.error(f"Error handling client {client_address}: {e}")
         finally:
-            # Remove from connected clients
+            # Remove from all client sets
             self.connected_clients.discard(websocket)
+            self.tracking_clients.discard(websocket)
+            self.client_types.pop(websocket, None)
             
-            # Stop polling if no clients remain
-            if not self.connected_clients and self.is_polling:
+            # Stop polling if no tracking clients remain
+            if not self.tracking_clients and self.is_polling:
                 self.is_polling = False
                 if self.polling_task:
                     self.polling_task.cancel()

@@ -43,6 +43,12 @@ function connectWebSocket() {
         console.log('Connected to WebSocket server');
         updateConnectionStatus(true);
         
+        // Identify as a dashboard client (tracking type)
+        ws.send(JSON.stringify({
+            type: 'client_identify',
+            client_type: 'dashboard'
+        }));
+        
         // Clear any pending reconnect
         if (reconnectTimeout) {
             clearTimeout(reconnectTimeout);

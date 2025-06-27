@@ -24,7 +24,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
         websocket.onopen = () => {
             console.log('Connected! Requesting logbook data...');
-            // Provide a fallback to an empty string if 'logbookLastUpdate' is not set
+            
+            // Identify as a data-only client that doesn't need aircraft tracking
+            websocket.send(JSON.stringify({
+                type: 'client_identify',
+                client_type: 'logbook'
+            }));
+            
+            // Then request logbook data
             const lastUpdate = localStorage.getItem('logbookLastUpdate') || '';
             websocket.send(JSON.stringify({
                 type: 'get_logbook',

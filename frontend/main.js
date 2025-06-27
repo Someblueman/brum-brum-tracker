@@ -297,6 +297,13 @@ function setupWebSocket() {
         websocket.onopen = () => {
             const timestamp = new Date().toISOString();
             console.log(`WEBSOCKET CONNECTED: ${timestamp} (attempt #${reconnectAttempts + 1})`);
+            
+            // Identify as a tracker client
+            websocket.send(JSON.stringify({
+                type: 'client_identify',
+                client_type: 'tracker'
+            }));
+            
             updateConnectionStatus('connected');
             clearTimeout(reconnectTimeout);
             reconnectAttempts = 0; // Reset attempts on successful connection
