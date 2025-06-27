@@ -7,6 +7,8 @@
 let HOME_LAT = null;
 let HOME_LON = null;
 
+// Map instance
+let map = null;
 
 // Register Service Worker
 if ('serviceWorker' in navigator) {
@@ -1038,6 +1040,39 @@ function cleanupOldAircraftData() {
 
 // Start periodic cleanup
 setInterval(cleanupOldAircraftData, AIRCRAFT_CLEANUP_INTERVAL);
+
+/**
+ * Initialize the Leaflet map background
+ */
+function initializeMap() {
+    try {
+        // Create map with all interactions disabled
+        map = L.map('map', {
+            center: [HOME_LAT, HOME_LON],
+            zoom: 9,
+            zoomControl: false,
+            dragging: false,
+            touchZoom: false,
+            scrollWheelZoom: false,
+            doubleClickZoom: false,
+            boxZoom: false,
+            keyboard: false,
+            tap: false,
+            attributionControl: false
+        });
+
+        // Add a simple, clean tile layer
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png', {
+            maxZoom: 19
+        }).addTo(map);
+
+        console.log('Map initialized successfully');
+    } catch (error) {
+        console.error('Error initializing map:', error);
+        // Hide map on error but continue app functionality
+        document.getElementById('map').style.display = 'none';
+    }
+}
 
 // Initialize when DOM is ready
 if (document.readyState === 'loading') {
