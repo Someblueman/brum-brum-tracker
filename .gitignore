@@ -84,6 +84,9 @@ config/ssl/*.cert
 backend/database/*.db*
 backend/database/*.db-shm
 backend/database/*.db-wal
+backend/*.db
+backend/*.db-shm
+backend/*.db-wal
 frontend/dist/
 
 # Serena agent files
