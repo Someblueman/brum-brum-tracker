@@ -3,7 +3,14 @@
  * Displays a visual collection of all spotted aircraft types
  */
 
+import { LazyImageLoader } from './js/modules/lazy-loader.js';
+
 document.addEventListener('DOMContentLoaded', () => {
+    // Initialize lazy loader
+    const lazyLoader = new LazyImageLoader({
+        rootMargin: '100px 0px',
+        placeholder: 'assets/plane-placeholder.svg'
+    });
     const grid = document.getElementById('logbook-grid');
     const loadingMessage = document.getElementById('loading-logbook');
 
@@ -117,10 +124,15 @@ document.addEventListener('DOMContentLoaded', () => {
             const card = document.createElement('div');
             card.className = 'logbook-card';
 
-            const planeImg = document.createElement('img');
-            planeImg.src = entry.image_url || 'assets/plane-placeholder.svg';
-            planeImg.alt = entry.aircraft_type;
-            planeImg.onerror = () => { planeImg.src = 'assets/plane-placeholder.svg'; }; // Fallback for broken images
+            // Create lazy-loaded image
+            const planeImg = lazyLoader.createLazyImage(
+                entry.image_url || 'assets/plane-placeholder.svg',
+                entry.aircraft_type,
+                'logbook-image'
+            );
+            
+            // Observe the image for lazy loading
+            lazyLoader.observe(planeImg);
 
             const planeName = document.createElement('div');
             planeName.className = 'plane-name';
