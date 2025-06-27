@@ -21,10 +21,10 @@ from backend.opensky_client import (
 from backend.db import get_aircraft_from_cache, add_to_logbook, get_logbook
 from backend.aircraft_data import get_aircraft_data
 from backend.aircraft_database import (
-    fetch_aircraft_details_from_hexdb,
     fetch_flight_route_from_hexdb,
     fetch_airport_info_from_hexdb
 )
+from backend.aircraft_type_resolver import resolve_aircraft_type
 from backend.auth import require_auth
 from utils.constants import (
     WEBSOCKET_HOST,
@@ -55,84 +55,7 @@ logging.getLogger('utils.geometry').setLevel(logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 
-def simplify_aircraft_type(manufacturer: str, type_name: str) -> str:
-    """
-    Convert technical aircraft type to kid-friendly names.
-    """
-    # Clean up the input
-    manufacturer = (manufacturer or '').strip()
-    type_name = (type_name or '').strip()
-    
-    # Common aircraft type mappings
-    type_mappings = {
-        # Boeing
-        '737': 'Boeing 737',
-        '747': 'Boeing 747 Jumbo Jet',
-        '757': 'Boeing 757',
-        '767': 'Boeing 767',
-        '777': 'Boeing 777',
-        '787': 'Boeing 787 Dreamliner',
-        # Airbus
-        'A319': 'Airbus A319',
-        'A320': 'Airbus A320',
-        'A321': 'Airbus A321',
-        'A330': 'Airbus A330',
-        'A340': 'Airbus A340',
-        'A350': 'Airbus A350',
-        'A380': 'Airbus A380 Super Jumbo',
-        # Embraer
-        'E170': 'Embraer E170',
-        'E175': 'Embraer E175',
-        'E190': 'Embraer E190',
-        'E195': 'Embraer E195',
-        'ERJ': 'Embraer Regional Jet',
-        # Bombardier
-        'CRJ': 'Bombardier CRJ',
-        'Q400': 'Bombardier Dash 8',
-        'DHC-8': 'Bombardier Dash 8',
-        # ATR
-        'ATR 42': 'ATR 42 Propeller',
-        'ATR 72': 'ATR 72 Propeller',
-        # Others
-        'Cessna': 'Cessna Small Plane',
-        'Beechcraft': 'Beechcraft Small Plane',
-        'Gulfstream': 'Gulfstream Private Jet',
-        'Learjet': 'Learjet',
-        'Citation': 'Cessna Citation Jet',
-    }
-    
-    # Check for common patterns in the type name
-    full_type = f"{manufacturer} {type_name}".upper()
-    
-    for pattern, friendly_name in type_mappings.items():
-        if pattern.upper() in full_type:
-            return friendly_name
-    
-    # Special handling for specific manufacturers
-    if 'BOEING' in manufacturer.upper():
-        if type_name:
-            return f"Boeing {type_name}"
-        return "Boeing Aircraft"
-    elif 'AIRBUS' in manufacturer.upper():
-        if type_name:
-            return f"Airbus {type_name}"
-        return "Airbus Aircraft"
-    elif 'CESSNA' in manufacturer.upper():
-        return "Cessna Small Plane"
-    elif 'PIPER' in manufacturer.upper():
-        return "Piper Small Plane"
-    elif 'BEECH' in manufacturer.upper() or 'BEECHCRAFT' in manufacturer.upper():
-        return "Beechcraft Small Plane"
-    
-    # If we have both manufacturer and type, combine them nicely
-    if manufacturer and type_name:
-        return f"{manufacturer} {type_name}"
-    elif manufacturer:
-        return f"{manufacturer} Aircraft"
-    elif type_name:
-        return type_name
-    
-    return "Unknown Aircraft"
+# Moved to aircraft_type_resolver.py
 
 
 class AircraftTracker:
@@ -159,14 +82,9 @@ class AircraftTracker:
         icao24 = aircraft['icao24']
         callsign = aircraft.get('callsign', '')
 
-        # 1. Get Aircraft Name from hexdb
-        aircraft_details = fetch_aircraft_details_from_hexdb(icao24)
-        if aircraft_details and 'Manufacturer' in aircraft_details:
-            manufacturer = aircraft_details.get('Manufacturer', '')
-            type_name = aircraft_details.get('Type', '')
-            aircraft_type = simplify_aircraft_type(manufacturer, type_name)
-        else:
-            aircraft_type = 'Unknown Aircraft'
+        # 1. Get Aircraft Type using resolver with multiple fallbacks
+        # Priority: Cache -> Hexdb -> Planespotters -> Unknown
+        aircraft_type = resolve_aircraft_type(icao24)
 
         # 2. Get Image Data (uses existing logic)
         media_data = get_aircraft_data(icao24)
@@ -243,17 +161,9 @@ class AircraftTracker:
                     if eta_seconds == float('inf'):
                         continue
 
-                    # --- START OF FIX ---
-                    # 1. Get Aircraft Name from hexdb
+                    # Get Aircraft Type using resolver
                     icao24 = aircraft['icao24']
-                    aircraft_details = fetch_aircraft_details_from_hexdb(icao24)
-                    if aircraft_details and 'Manufacturer' in aircraft_details:
-                        manufacturer = aircraft_details.get('Manufacturer', '')
-                        type_name = aircraft_details.get('Type', '')
-                        aircraft_type = simplify_aircraft_type(manufacturer, type_name)
-                    else:
-                        aircraft_type = 'Unknown Aircraft'
-                    # --- END OF FIX ---
+                    aircraft_type = resolve_aircraft_type(icao24)
 
                     # Convert altitude and speed
                     altitude_ft = aircraft['baro_altitude'] * 3.28084 if aircraft['baro_altitude'] else 0
@@ -488,37 +398,15 @@ class AircraftTracker:
                     data = json.loads(message)
                     logger.debug(f"Received from client: {data}")
                     
-                    if data.get('type') == 'get_logbook':
-                        since = data.get('since') if data.get('since') else None
-                        log_data = get_logbook(since=since) # Pass it to the get_logbook function
-                        response = {
-                            'type': 'logbook_data',
-                            'log': log_data
-                        }
-                        await websocket.send(json.dumps(response))
-                    elif data.get('type') == 'get_config':
-                        # Send configuration to frontend
-                        config_response = {
-                            'type': 'config',
-                            'config': {
-                                'home': {
-                                    'lat': HOME_LAT,
-                                    'lon': HOME_LON
-                                },
-                                'search': {
-                                    'radiusKm': SEARCH_RADIUS_KM,
-                                    'minElevationAngle': MIN_ELEVATION_ANGLE
-                                }
-                            }
-                        }
-                        await websocket.send(json.dumps(config_response))
+                    # Handle batched messages
+                    if data.get('type') == 'batch':
+                        messages = data.get('messages', [])
+                        logger.debug(f"Received batch of {len(messages)} messages")
+                        for msg in messages:
+                            await self._handle_single_message(websocket, msg)
                     else:
-                        # Echo back other messages for now
-                        await websocket.send(json.dumps({
-                            'type': 'echo',
-                            'data': data
-                        }))
-
+                        await self._handle_single_message(websocket, data)
+                    
                 except json.JSONDecodeError:
                     logger.error(f"Invalid JSON from client: {message}")
                     
@@ -546,6 +434,39 @@ class AircraftTracker:
                     except asyncio.CancelledError:
                         pass
                 logger.info("Stopped polling and cleanup - no clients connected")
+    
+    async def _handle_single_message(self, websocket: WebSocketServerProtocol, data: Dict[str, Any]) -> None:
+        """Handle a single message from the client."""
+        if data.get('type') == 'get_logbook':
+            since = data.get('since') if data.get('since') else None
+            log_data = get_logbook(since=since) # Pass it to the get_logbook function
+            response = {
+                'type': 'logbook_data',
+                'log': log_data
+            }
+            await websocket.send(json.dumps(response))
+        elif data.get('type') == 'get_config':
+            # Send configuration to frontend
+            config_response = {
+                'type': 'config',
+                'config': {
+                    'home': {
+                        'lat': HOME_LAT,
+                        'lon': HOME_LON
+                    },
+                    'search': {
+                        'radiusKm': SEARCH_RADIUS_KM,
+                        'minElevationAngle': MIN_ELEVATION_ANGLE
+                    }
+                }
+            }
+            await websocket.send(json.dumps(config_response))
+        else:
+            # Echo back other messages for now
+            await websocket.send(json.dumps({
+                'type': 'echo',
+                'data': data
+            }))
 
 
 # Global tracker instance

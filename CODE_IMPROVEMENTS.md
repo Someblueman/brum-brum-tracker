@@ -137,10 +137,10 @@ This document tracks the code quality improvements needed before going live with
 
 ### 5.3 Backend Optimization
 - 🟢 Add caching for aircraft data (completed - created aircraft_cache.py with multi-level LRU caching)
-- 🔴 Implement connection pooling for API calls
-- 🔴 Optimize database indexes
-- 🔴 Add request debouncing
-- 🔴 Get aircraft model from Planespotters API as fallback when OpenSky doesn't provide it
+- 🟢 Implement connection pooling for API calls (created api_pool.py)
+- 🟢 Optimize database indexes (created optimize_db_indexes.py)
+- 🟢 Add request debouncing (created debouncer.js module)
+- 🟢 Get aircraft model from Planespotters API as fallback when OpenSky doesn't provide it (created planespotters_client.py)
 
 ---
 
@@ -273,12 +273,12 @@ brum-brum-tracker/
 Last Updated: 2025-06-27
 
 Total Items: 67
-- 🔴 Not Started: 13
+- 🔴 Not Started: 9
 - 🟡 In Progress: 0
-- 🟢 Completed: 54
+- 🟢 Completed: 58
 - ⏸️ On Hold: 0
 
-Completion: 80.6%
+Completion: 86.6%
 
 ### Files Created/Modified:
 - ✅ backend/message_validator.py - WebSocket message validation
@@ -350,3 +350,14 @@ Completion: 80.6%
 - ✅ frontend/js/modules/render-optimizer.js - Render optimization with dirty checking and batching
 - ✅ frontend/js/modules/optimized-updates.js - Optimized update functions for DOM manipulation
 - ✅ backend/aircraft_cache.py - Multi-level LRU cache for aircraft data
+- ✅ backend/api_pool.py - Connection pooling for external API calls
+- ✅ tests/unit/backend/test_api_pool.py - Tests for API connection pool
+- ✅ backend/optimize_db_indexes.py - Database index optimization script
+- ✅ tests/unit/backend/test_db_optimization.py - Tests for database optimization
+- ✅ frontend/js/modules/debouncer.js - Request debouncing utilities
+- ✅ tests/frontend/test_debouncer.js - Tests for debouncer module
+- ✅ Updated websocket-manager.js to support debouncing
+- ✅ Updated server.py to handle batched messages
+- ✅ backend/planespotters_client.py - Planespotters API client for aircraft type fallback
+- ✅ tests/unit/backend/test_planespotters_client.py - Tests for Planespotters client
+- ✅ Updated server.py to use Planespotters as fallback for aircraft types
