@@ -1,7 +1,9 @@
 /**
  * WebSocket Manager Module
- * Shared WebSocket connection management with reconnection support
+ * Shared WebSocket connection management with reconnection support and request debouncing
  */
+
+import { createMessageBatcher, debounce } from './debouncer.js';
 
 export class WebSocketManager {
     constructor(options = {}) {
@@ -27,6 +29,20 @@ export class WebSocketManager {
         this.reconnectTimeout = null;
         this.reconnectAttempts = 0;
         this.isReconnecting = false;
+        
+        // Debouncing
+        this.enableDebouncing = options.enableDebouncing || false;
+        this.debounceWait = options.debounceWait || 100;
+        this.maxBatchSize = options.maxBatchSize || 10;
+        
+        // Create message batcher if debouncing is enabled
+        if (this.enableDebouncing) {
+            this.messageBatcher = createMessageBatcher(
+                this._sendRaw.bind(this),
+                this.debounceWait,
+                this.maxBatchSize
+            );
+        }
         
         // Event handlers
         this.handlers = {
@@ -115,6 +131,10 @@ export class WebSocketManager {
             this.reconnectTimeout = null;
         }
         
+        if (this.messageBatcher) {
+            this.messageBatcher.cancel();
+        }
+        
         if (this.ws) {
             this.ws.close();
             this.ws = null;
@@ -125,12 +145,44 @@ export class WebSocketManager {
      * Send message through WebSocket
      */
     send(data) {
+        if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+            return false;
+        }
+        
+        if (this.enableDebouncing && this.messageBatcher) {
+            this.messageBatcher.send(data);
+            return true;
+        } else {
+            return this._sendRaw(data);
+        }
+    }
+    
+    /**
+     * Send message immediately without debouncing
+     */
+    sendImmediate(data) {
+        return this._sendRaw(data);
+    }
+    
+    /**
+     * Internal send method
+     */
+    _sendRaw(data) {
         if (this.ws && this.ws.readyState === WebSocket.OPEN) {
             const message = typeof data === 'string' ? data : JSON.stringify(data);
             this.ws.send(message);
             return true;
         }
         return false;
+    }
+    
+    /**
+     * Flush any pending debounced messages
+     */
+    flush() {
+        if (this.messageBatcher) {
+            this.messageBatcher.flush();
+        }
     }
     
     /**

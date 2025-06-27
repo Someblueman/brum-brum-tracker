@@ -7,6 +7,7 @@ import math
 import logging
 import requests
 from typing import List, Dict, Any, Optional, Tuple
+from api_pool import get_global_pool
 
 logger = logging.getLogger(__name__)
 
@@ -68,10 +69,8 @@ class FlightDataClient:
         # Initialize API client with or without credentials
         if self.use_http_fallback:
             self.api = None
-            self.session = requests.Session()
-            # Note: Basic auth doesn't work well with requests Session for OpenSky
-            # We'll add auth headers manually in each request
-            logger.info("Using HTTP fallback (authentication will be added per-request)")
+            self.pool = get_global_pool()
+            logger.info("Using HTTP fallback with connection pooling")
         else:
             if OPENSKY_USERNAME and OPENSKY_PASSWORD:
                 self.api = OpenSkyApi(username=OPENSKY_USERNAME, password=OPENSKY_PASSWORD)
@@ -109,7 +108,7 @@ class FlightDataClient:
             else:
                 logger.debug("No authentication - using anonymous access")
             
-            response = self.session.get(url, params=params, headers=headers, timeout=30)
+            response = self.pool.get(url, params=params, headers=headers)
             
             logger.debug(f"Response headers: {dict(response.headers)}")
             response.raise_for_status()
@@ -203,7 +202,7 @@ class FlightDataClient:
         }
         
         try:
-            response = requests.post(token_url, data=data, timeout=10)
+            response = self.pool.post(token_url, data=data)
             response.raise_for_status()
             
             token_data = response.json()

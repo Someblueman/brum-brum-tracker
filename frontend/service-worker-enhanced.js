@@ -164,6 +164,11 @@ async function cacheFirst(request) {
         return response;
     } catch (error) {
         console.error('Service Worker: Fetch failed', error);
+        // Return offline page if available
+        const offlinePage = await caches.match('/offline.html');
+        if (offlinePage) {
+            return offlinePage;
+        }
         throw error;
     }
 }
@@ -197,20 +202,31 @@ async function networkFirstWithCache(request, cacheName) {
     const cache = await caches.open(cacheName);
     
     try {
-        const response = await fetch(request);
+        const networkPromise = fetch(request);
+        const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Timeout')), 3000)
+        );
+        
+        const response = await Promise.race([networkPromise, timeoutPromise]);
         
         if (response.ok) {
-            cache.put(request, response.clone());
+            // Add timestamp to track cache age
+            const responseWithTimestamp = await addTimestamp(response);
+            cache.put(request, responseWithTimestamp.clone());
             limitCacheSize(cacheName, MAX_CACHE_SIZES.API);
+            return responseWithTimestamp;
         }
         
-        return response;
+        throw new Error('Network response not ok');
     } catch (error) {
         console.log('Service Worker: Network failed, trying cache', error);
         const cached = await cache.match(request);
         
         if (cached) {
-            return cached;
+            const age = await getCacheAge(cached);
+            if (age < CACHE_DURATIONS.API) {
+                return cached;
+            }
         }
         
         throw error;
@@ -234,6 +250,32 @@ async function staleWhileRevalidate(request, cacheName) {
     });
     
     return cached || fetchPromise;
+}
+
+// Utility functions
+
+/**
+ * Add timestamp header to response
+ */
+async function addTimestamp(response) {
+    const blob = await response.blob();
+    const headers = new Headers(response.headers);
+    headers.set('sw-cache-timestamp', Date.now());
+    
+    return new Response(blob, {
+        status: response.status,
+        statusText: response.statusText,
+        headers: headers
+    });
+}
+
+/**
+ * Get cache age in seconds
+ */
+async function getCacheAge(response) {
+    const timestamp = response.headers.get('sw-cache-timestamp');
+    if (!timestamp) return Infinity;
+    return (Date.now() - parseInt(timestamp)) / 1000;
 }
 
 /**
@@ -286,3 +328,16 @@ self.addEventListener('message', event => {
             break;
     }
 });
+
+// Background sync for offline support
+self.addEventListener('sync', event => {
+    if (event.tag === 'sync-logbook') {
+        event.waitUntil(syncLogbook());
+    }
+});
+
+async function syncLogbook() {
+    // Implement background sync for logbook data
+    console.log('Service Worker: Syncing logbook data...');
+    // This would sync any offline logbook entries when connection is restored
+}
