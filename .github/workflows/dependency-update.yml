@@ -1,0 +1,49 @@
+name: Dependency Update
+
+on:
+  schedule:
+    # Run every Monday at 9am UTC
+    - cron: '0 9 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update-python-dependencies:
+    name: Update Python Dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      
+      - name: Install pip-tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install pip-tools
+      
+      - name: Update requirements
+        run: |
+          # Update main requirements
+          pip-compile requirements.in --upgrade
+          
+          # Update test requirements
+          pip-compile requirements-test.in --upgrade
+      
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: 'chore: update Python dependencies'
+          title: 'Automated Python Dependency Updates'
+          body: |
+            This PR updates Python dependencies to their latest versions.
+            
+            Please review the changes and ensure all tests pass before merging.
+          branch: automated-dependency-updates
+          delete-branch: true

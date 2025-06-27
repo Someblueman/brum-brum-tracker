@@ -1,3 +1,8 @@
+/**
+ * Logbook page for Brum Brum Tracker
+ * Displays a visual collection of all spotted aircraft types
+ */
+
 document.addEventListener('DOMContentLoaded', () => {
     const grid = document.getElementById('logbook-grid');
     const loadingMessage = document.getElementById('loading-logbook');
@@ -8,6 +13,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let websocket = null;
 
+    /**
+     * Connect to WebSocket server and request logbook data
+     */
     function connect() {
         console.log('Connecting to WebSocket...');
         loadingMessage.classList.remove('hidden');
@@ -51,16 +59,28 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     }
 
+    /**
+     * Get cached logbook data from localStorage
+     * @returns {Array|null} Cached logbook entries or null if none exist
+     */
     function getCachedLogbook() {
         const cachedData = localStorage.getItem('logbook');
         return cachedData ? JSON.parse(cachedData) : null;
     }
 
+    /**
+     * Store logbook data in localStorage with timestamp
+     * @param {Array} log - Array of logbook entries to cache
+     */
     function setCachedLogbook(log) {
         localStorage.setItem('logbook', JSON.stringify(log));
         localStorage.setItem('logbookLastUpdate', new Date().toISOString());
     }
 
+    /**
+     * Update logbook with new entries, merging with cached data
+     * @param {Array} newEntries - New logbook entries from server
+     */
     function updateLogbook(newEntries) {
         let log = getCachedLogbook() || [];
 
@@ -81,6 +101,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
 
+    /**
+     * Display logbook entries in the grid UI
+     * @param {Array} log - Array of logbook entries to display
+     */
     function displayLogbook(log) {
         const grid = document.getElementById('logbook-grid');
         grid.innerHTML = ''; // Clear previous entries

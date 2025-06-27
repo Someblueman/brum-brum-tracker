@@ -10,6 +10,7 @@ import socketserver
 import os
 import sys
 from pathlib import Path
+from typing import Any, Optional
 
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent))
@@ -21,7 +22,7 @@ from backend.ssl_utils import create_ssl_context, SSLConfig, check_certificates_
 class CORSRequestHandler(http.server.SimpleHTTPRequestHandler):
     """HTTP request handler with CORS headers."""
     
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         # Set the directory to serve
         try:
             super().__init__(*args, directory='frontend', **kwargs)
