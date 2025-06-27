@@ -12,8 +12,10 @@ logger = logging.getLogger(__name__)
 
 class SSLConfig:
     """SSL configuration constants."""
-    CERT_FILE = "cert.pem"
-    KEY_FILE = "key.pem"
+    # SSL certificates are now in config/ssl directory
+    SSL_DIR = Path(__file__).parent.parent.parent / "config" / "ssl"
+    CERT_FILE = str(SSL_DIR / "cert.pem")
+    KEY_FILE = str(SSL_DIR / "key.pem")
     
     # Instructions for certificate generation
     MKCERT_INSTRUCTIONS = """
@@ -27,13 +29,13 @@ To generate certificates using mkcert:
    mkcert -install
 
 3. Generate certificates:
-   mkcert -cert-file cert.pem -key-file key.pem localhost 127.0.0.1 ::1 [your-local-ip]
+   mkcert -cert-file config/ssl/cert.pem -key-file config/ssl/key.pem localhost 127.0.0.1 ::1 [your-local-ip]
 
 4. Or run the provided setup script:
-   ./setup_mkcert.sh
+   ./scripts/setup_mkcert.sh
 
 Alternatively, generate a self-signed certificate with:
-   openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365 -nodes
+   openssl req -x509 -newkey rsa:4096 -keyout config/ssl/key.pem -out config/ssl/cert.pem -days 365 -nodes
 """
 
 
