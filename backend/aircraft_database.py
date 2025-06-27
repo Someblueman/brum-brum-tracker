@@ -4,7 +4,7 @@ Aircraft database service using multiple data sources.
 
 import logging
 import requests
-from typing import Dict, Optional, Tuple
+from typing import Dict, Optional
 
 logger = logging.getLogger(__name__)
 

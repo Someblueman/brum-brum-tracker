@@ -1,6 +1,18 @@
 """
 WebSocket message validation module.
-Provides schema validation for all WebSocket messages.
+
+This module provides comprehensive schema validation for all WebSocket messages
+exchanged between clients and the server. It ensures data integrity, prevents
+injection attacks, and maintains protocol consistency.
+
+The validator enforces:
+- Message structure and type safety
+- Field presence and data types
+- Value ranges and constraints
+- Protection against malformed data
+
+All messages must pass validation before being processed, providing a secure
+communication layer for the real-time aircraft tracking system.
 """
 
 import json
@@ -9,25 +21,48 @@ from enum import Enum
 
 
 class MessageType(Enum):
-    """Valid WebSocket message types."""
-    # Client to Server
-    CLIENT_HELLO = "hello"
-    GET_LOGBOOK = "get_logbook"
+    """
+    Valid WebSocket message types.
     
-    # Server to Client
-    AIRCRAFT_UPDATE = "aircraft"
-    AIRCRAFT_LOST = "aircraft_lost"
-    LOGBOOK_DATA = "logbook"
-    ERROR = "error"
+    Defines all allowed message types in the protocol, separated by
+    direction (client-to-server vs server-to-client) for clarity.
+    """
+    # Client to Server messages
+    CLIENT_HELLO = "hello"          # Initial connection handshake
+    GET_LOGBOOK = "get_logbook"     # Request logbook entries
+    
+    # Server to Client messages
+    AIRCRAFT_UPDATE = "aircraft"     # Real-time aircraft position update
+    AIRCRAFT_LOST = "aircraft_lost"  # Aircraft no longer visible
+    LOGBOOK_DATA = "logbook"        # Logbook entries response
+    ERROR = "error"                 # Error notification
 
 
 class ValidationError(Exception):
-    """Custom exception for message validation errors."""
+    """
+    Custom exception for message validation errors.
+    
+    Raised when a message fails validation. The error message should
+    be safe to send back to the client without exposing internal details.
+    """
     pass
 
 
 class MessageValidator:
-    """Validates WebSocket messages between client and server."""
+    """
+    Validates WebSocket messages between client and server.
+    
+    This class provides static methods to validate all message types,
+    ensuring they conform to the expected schema. It acts as a security
+    barrier, preventing malformed or malicious messages from being processed.
+    
+    The validator checks:
+    - JSON structure validity
+    - Required fields presence
+    - Data type correctness
+    - Value range constraints
+    - Message type validity
+    """
     
     @staticmethod
     def validate_client_message(message: str) -> Dict[str, Any]:

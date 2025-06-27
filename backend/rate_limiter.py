@@ -1,24 +1,47 @@
 """
 Rate limiting module for WebSocket connections.
-Prevents abuse and ensures fair resource usage.
+
+This module provides comprehensive rate limiting functionality to prevent
+abuse and ensure fair resource usage across all WebSocket clients. It implements
+a token bucket algorithm with sliding windows for accurate rate tracking.
+
+The rate limiter protects against:
+- Connection flooding: Limits new connections per IP address
+- Message flooding: Limits messages per connection
+- Resource exhaustion: Limits concurrent connections per IP
+
+Rate limiting is essential for production deployments to maintain service
+stability and prevent denial-of-service attacks.
 """
 
 import time
 from collections import defaultdict, deque
 from typing import Dict, Deque, Optional
 import asyncio
-from datetime import datetime, timedelta
 
 
 class RateLimitExceeded(Exception):
-    """Exception raised when rate limit is exceeded."""
+    """
+    Exception raised when rate limit is exceeded.
+    
+    This exception should be caught by WebSocket handlers to send
+    appropriate error messages to clients and potentially close connections.
+    """
     pass
 
 
 class RateLimiter:
     """
     Token bucket rate limiter for WebSocket connections.
-    Limits both connection rate and message rate per client.
+    
+    Implements a sliding window algorithm to track and limit:
+    - Connection attempts per IP address
+    - Messages sent per connection
+    - Concurrent connections per IP address
+    
+    The rate limiter automatically cleans up old tracking data to prevent
+    memory leaks. All limits are configurable and can be adjusted based
+    on server capacity and expected usage patterns.
     """
     
     def __init__(
@@ -30,14 +53,30 @@ class RateLimiter:
         max_connections_per_ip: int = 3
     ):
         """
-        Initialize rate limiter.
+        Initialize rate limiter with configurable thresholds.
+        
+        Default values are suitable for a small to medium deployment.
+        Adjust based on your server capacity and expected usage.
         
         Args:
-            connection_limit: Max new connections per window
-            connection_window: Time window in seconds for connections
-            message_limit: Max messages per window
-            message_window: Time window in seconds for messages
-            max_connections_per_ip: Max concurrent connections per IP
+            connection_limit: Maximum new connections allowed per IP within
+                the connection window (default: 5 connections)
+            connection_window: Time window in seconds for connection rate
+                limiting (default: 60 seconds)
+            message_limit: Maximum messages allowed per connection within
+                the message window (default: 100 messages)
+            message_window: Time window in seconds for message rate
+                limiting (default: 60 seconds)
+            max_connections_per_ip: Maximum concurrent WebSocket connections
+                allowed from a single IP address (default: 3 connections)
+                
+        Example:
+            >>> limiter = RateLimiter(
+            ...     connection_limit=10,      # Allow 10 new connections
+            ...     connection_window=300,    # Per 5 minutes
+            ...     message_limit=1000,       # Allow 1000 messages
+            ...     message_window=3600      # Per hour
+            ... )
         """
         self.connection_limit = connection_limit
         self.connection_window = connection_window

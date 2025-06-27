@@ -1,5 +1,12 @@
 """
 Aircraft service module for handling aircraft-related business logic.
+
+This module provides the core service layer for aircraft tracking operations,
+including fetching real-time aircraft data, formatting messages for clients,
+and simplifying technical aircraft information for user-friendly display.
+
+The AircraftService class acts as the main orchestrator between the OpenSky API,
+local aircraft databases, and WebSocket clients.
 """
 
 import logging
@@ -31,18 +38,48 @@ logger = logging.getLogger(__name__)
 
 
 class AircraftService:
-    """Service for managing aircraft data and operations."""
+    """
+    Service for managing aircraft data and operations.
+    
+    This class handles all aircraft-related business logic including:
+    - Fetching real-time aircraft positions from OpenSky Network
+    - Enriching aircraft data with registration and route information
+    - Formatting data for client consumption
+    - Simplifying technical aircraft types for user-friendly display
+    
+    Attributes:
+        last_aircraft_data: Cache of the most recent aircraft data fetched
+    """
     
     def __init__(self):
+        """Initialize the AircraftService with empty cache."""
         self.last_aircraft_data = None
     
     def simplify_aircraft_type(self, manufacturer: str, type_name: str) -> str:
         """
-        Convert technical aircraft type to kid-friendly names.
+        Convert technical aircraft type codes to kid-friendly names.
+        
+        This method translates technical aircraft designations (like "B763" or "A388")
+        into more recognizable names suitable for young users (like "Boeing 767" or 
+        "Airbus A380 Super Jumbo").
+        
+        Args:
+            manufacturer: The aircraft manufacturer name (e.g., "Boeing", "Airbus")
+            type_name: The technical type designation (e.g., "737-800", "A320-214")
+            
+        Returns:
+            A simplified, user-friendly aircraft type name
+            
+        Examples:
+            >>> simplify_aircraft_type("Boeing", "737-800")
+            'Boeing 737'
+            >>> simplify_aircraft_type("Airbus", "A388")
+            'Airbus A380 Super Jumbo'
         """
         manufacturer = (manufacturer or '').strip()
         type_name = (type_name or '').strip()
         
+        # Mapping of technical codes to friendly names
         type_mappings = {
             # Boeing
             '737': 'Boeing 737',
@@ -100,8 +137,21 @@ class AircraftService:
         """
         Fetch current aircraft data from OpenSky API.
         
+        This method performs the following operations:
+        1. Builds a geographic bounding box around the home location
+        2. Queries the OpenSky Network API for aircraft in that area
+        3. Filters aircraft by distance and visibility criteria
+        4. Returns only aircraft that are visible from the home location
+        
+        The visibility check ensures aircraft are above the minimum elevation
+        angle, accounting for Earth's curvature and terrain.
+        
         Returns:
-            List of aircraft data if successful, None otherwise
+            List of aircraft dictionaries with state data if successful,
+            None if an error occurs or no aircraft are found
+            
+        Raises:
+            Logs errors but doesn't raise exceptions to ensure graceful degradation
         """
         try:
             # Build bounding box
@@ -132,11 +182,25 @@ class AircraftService:
         """
         Format a single aircraft for client display.
         
+        This method enriches raw aircraft state data with additional information:
+        - Aircraft registration and image from local database
+        - Simplified aircraft type for user-friendly display
+        - Flight route information (origin and destination airports)
+        - Altitude conversion to feet
+        - All measurements rounded for clean display
+        
         Args:
-            aircraft: Aircraft data dictionary
+            aircraft: Raw aircraft state dictionary containing:
+                - icao24: ICAO 24-bit address
+                - latitude/longitude: Current position
+                - baro_altitude: Barometric altitude in meters
+                - velocity: Ground speed in m/s
+                - distance_km: Distance from home
+                - bearing_from_home: Direction from home
             
         Returns:
-            Formatted message dictionary
+            Formatted message dictionary ready for WebSocket transmission
+            containing all display-ready fields for the frontend
         """
         icao24 = aircraft['icao24']
         
@@ -201,13 +265,26 @@ class AircraftService:
     
     def format_aircraft_list_message(self, aircraft_list: List[Dict[str, Any]]) -> Dict[str, Any]:
         """
-        Format a list of approaching aircraft for the dashboard.
+        Format a list of approaching aircraft for the dashboard view.
+        
+        This method processes multiple aircraft to create a summary suitable for
+        the "all planes" dashboard. It:
+        - Calculates estimated time of arrival (ETA) for each aircraft
+        - Filters out aircraft that are moving away (infinite ETA)
+        - Enriches each aircraft with simplified type information
+        - Sorts by ETA to show closest aircraft first
+        - Limits results to 10 most relevant aircraft
         
         Args:
-            aircraft_list: List of aircraft state dictionaries
+            aircraft_list: List of aircraft state dictionaries, each containing
+                position, velocity, and distance information
             
         Returns:
-            Formatted message with aircraft list and ETAs
+            Formatted message dictionary containing:
+                - type: 'approaching_aircraft_list'
+                - timestamp: Current UTC time
+                - aircraft_count: Number of approaching aircraft
+                - aircraft: List of formatted aircraft sorted by ETA
         """
         formatted_aircraft = []
         

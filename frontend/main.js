@@ -7,7 +7,7 @@
 let HOME_LAT = null;
 let HOME_LON = null;
 
-// Initialize map
+// Map instance
 let map = null;
 
 // Register Service Worker
@@ -100,7 +100,6 @@ const elements = {
     unlockSound: document.getElementById('unlock-sound'),
     startButtonMammaPappa: document.getElementById('start-button-mamma-pappa'),
     startButtonMormorPops: document.getElementById('start-button-mormor-pops'),
-    startOverlay: document.getElementById('start-overlay'),
     sessionTracker: document.getElementById('session-tracker'),
     sessionCountNumber: document.getElementById('session-count-number'),
     originInfo: document.getElementById('origin-info'),
@@ -1043,7 +1042,7 @@ function cleanupOldAircraftData() {
 setInterval(cleanupOldAircraftData, AIRCRAFT_CLEANUP_INTERVAL);
 
 /**
- * Initialize the Leaflet map
+ * Initialize the Leaflet map background
  */
 function initializeMap() {
     try {
@@ -1067,9 +1066,11 @@ function initializeMap() {
             maxZoom: 19
         }).addTo(map);
 
+        console.log('Map initialized successfully');
     } catch (error) {
         console.error('Error initializing map:', error);
-        document.getElementById('map').style.display = 'none'; // Hide map on error
+        // Hide map on error but continue app functionality
+        document.getElementById('map').style.display = 'none';
     }
 }
 

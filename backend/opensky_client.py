@@ -8,11 +8,12 @@ import logging
 import requests
 from typing import List, Dict, Any, Optional, Tuple
 
+logger = logging.getLogger(__name__)
+
 try:
     from opensky_api import OpenSkyApi
     OPENSKY_API_AVAILABLE = True
 except ImportError:
-    logger = logging.getLogger(__name__)
     logger.warning("opensky_api package not found, will use HTTP fallback")
     OPENSKY_API_AVAILABLE = False
 
@@ -31,9 +32,6 @@ from utils.geometry import (
     elevation_angle,
     is_plane_approaching
 )
-
-
-logger = logging.getLogger(__name__)
 
 def _get_mock_aircraft_state() -> List[Dict[str, Any]]:
     """
