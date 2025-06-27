@@ -11,40 +11,30 @@ from typing import Set, Dict, Any, Optional, List
 import websockets
 from websockets.server import WebSocketServerProtocol
 
-from backend.opensky_client import (
+from api.opensky_client import (
     build_bounding_box,
     fetch_state_vectors,
     filter_aircraft,
     is_visible,
     select_best_plane
 )
-from backend.db import get_aircraft_from_cache, add_to_logbook, get_logbook
-from backend.aircraft_data import get_aircraft_data
-from backend.aircraft_database import (
+from database.db import get_aircraft_from_cache, add_to_logbook, get_logbook
+from utils.aircraft_data import get_aircraft_data
+from utils.aircraft_database import (
     fetch_flight_route_from_hexdb,
     fetch_airport_info_from_hexdb
 )
-from backend.aircraft_type_resolver import resolve_aircraft_type
-from backend.auth import require_auth
-from utils.constants import (
-    WEBSOCKET_HOST,
-    WEBSOCKET_PORT,
-    HOME_LAT,
-    HOME_LON,
-    SEARCH_RADIUS_KM,
-    MIN_ELEVATION_ANGLE,
-    POLLING_INTERVAL,
-    LOG_FILE,
-    LOG_LEVEL
-)
+from core.aircraft_type_resolver import resolve_aircraft_type
+from utils.auth import require_auth
+from utils.config import Config
 
 
 # Configure logging
 logging.basicConfig(
-    level=getattr(logging, LOG_LEVEL),
+    level=getattr(logging, Config.LOG_LEVEL),
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler(LOG_FILE),
+        logging.FileHandler(Config.LOG_FILE),
         logging.StreamHandler()
     ]
 )
@@ -252,14 +242,14 @@ class AircraftTracker:
     async def polling_loop(self) -> None:
         """Main polling loop for fetching aircraft data."""
         logger.info("Starting aircraft polling loop")
-        logger.info(f"Home location: lat={HOME_LAT}, lon={HOME_LON}")
-        logger.info(f"Search radius: {SEARCH_RADIUS_KM}km")
-        logger.info(f"Polling interval: {POLLING_INTERVAL}s")
+        logger.info(f"Home location: lat={Config.HOME_LAT}, lon={Config.HOME_LON}")
+        logger.info(f"Search radius: {Config.SEARCH_RADIUS_KM}km")
+        logger.info(f"Polling interval: {Config.POLLING_INTERVAL}s")
         
         while self.is_polling:
             try:
                 # Build search area
-                bbox = build_bounding_box(HOME_LAT, HOME_LON)
+                bbox = build_bounding_box(Config.HOME_LAT, Config.HOME_LON)
                 logger.debug(f"Built bounding box: {bbox}")
                 
                 # Fetch aircraft data
@@ -285,7 +275,7 @@ class AircraftTracker:
                     
                     # Find visible aircraft
                     visible = [a for a in filtered if is_visible(a)]
-                    logger.info(f"Found {len(visible)} visible aircraft (elevation > {MIN_ELEVATION_ANGLE}°)")
+                    logger.info(f"Found {len(visible)} visible aircraft (elevation > {Config.MIN_ELEVATION_ANGLE}°)")
                     
                     # Log first-time visible aircraft
                     for aircraft in visible:
@@ -344,7 +334,7 @@ class AircraftTracker:
                 logger.error(f"Error in polling loop: {e}")
             
             # Wait for next polling interval
-            await asyncio.sleep(POLLING_INTERVAL)
+            await asyncio.sleep(Config.POLLING_INTERVAL)
     
     @require_auth
     async def handle_client(self, websocket: WebSocketServerProtocol, path: str) -> None:
@@ -451,12 +441,12 @@ class AircraftTracker:
                 'type': 'config',
                 'config': {
                     'home': {
-                        'lat': HOME_LAT,
-                        'lon': HOME_LON
+                        'lat': Config.HOME_LAT,
+                        'lon': Config.HOME_LON
                     },
                     'search': {
-                        'radiusKm': SEARCH_RADIUS_KM,
-                        'minElevationAngle': MIN_ELEVATION_ANGLE
+                        'radiusKm': Config.SEARCH_RADIUS_KM,
+                        'minElevationAngle': Config.MIN_ELEVATION_ANGLE
                     }
                 }
             }
@@ -484,13 +474,13 @@ async def websocket_handler(websocket):
 
 async def main():
     """Main server entry point."""
-    logger.info(f"Starting WebSocket server on {WEBSOCKET_HOST}:{WEBSOCKET_PORT}")
+    logger.info(f"Starting WebSocket server on {Config.WEBSOCKET_HOST}:{Config.WEBSOCKET_PORT}")
     
     # Start WebSocket server with additional parameters for better compatibility
     async with websockets.serve(
         websocket_handler,
-        WEBSOCKET_HOST,
-        WEBSOCKET_PORT,
+        Config.WEBSOCKET_HOST,
+        Config.WEBSOCKET_PORT,
         # Additional parameters for better connection handling
         compression=None,  # Disable compression for better compatibility
         max_size=10 * 1024 * 1024,  # 10MB max message size
@@ -498,7 +488,7 @@ async def main():
         ping_timeout=10,  # Wait 10 seconds for pong
         close_timeout=10,  # Wait 10 seconds for close
     ):
-        logger.info(f"Server running at ws://{WEBSOCKET_HOST}:{WEBSOCKET_PORT}/ws")
+        logger.info(f"Server running at ws://{Config.WEBSOCKET_HOST}:{Config.WEBSOCKET_PORT}/ws")
         logger.info("WebSocket parameters: compression=None, ping_interval=20s")
         await asyncio.Future()  # Run forever
 
