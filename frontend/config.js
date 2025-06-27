@@ -24,8 +24,12 @@ const Config = {
     AUDIO_ENABLED: true,
     AUDIO_VOLUME: 0.7,
     AUDIO_DELAY_MS: 500,                  // Delay before playing audio
+    GLOW_DURATION: 15000,                 // Glow effect duration in ms
+    AIRCRAFT_TIMEOUT: 30000,              // Time before removing stale aircraft
     
-    // Map configuration
+    // Map configuration (will be loaded from backend)
+    HOME_LAT: null,
+    HOME_LON: null,
     DEFAULT_ZOOM: 10,
     MAX_TRACKING_DISTANCE_KM: 50,
     MIN_ELEVATION_ANGLE: 20,
@@ -116,5 +120,47 @@ if (configErrors.length > 0) {
 // Log configuration in debug mode
 Config.logConfig();
 
-// Make config immutable
-Object.freeze(Config);
+// Function to load configuration from backend
+Config.loadFromBackend = async function(websocket) {
+    return new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => {
+            reject(new Error('Config request timeout'));
+        }, 5000);
+        
+        const handleMessage = (event) => {
+            try {
+                const data = JSON.parse(event.data);
+                if (data.type === 'config') {
+                    clearTimeout(timeout);
+                    
+                    // Update configuration with backend values
+                    if (data.config.home) {
+                        Config.HOME_LAT = data.config.home.lat;
+                        Config.HOME_LON = data.config.home.lon;
+                    }
+                    
+                    if (data.config.search) {
+                        Config.MAX_TRACKING_DISTANCE_KM = data.config.search.radiusKm || Config.MAX_TRACKING_DISTANCE_KM;
+                        Config.MIN_ELEVATION_ANGLE = data.config.search.minElevationAngle || Config.MIN_ELEVATION_ANGLE;
+                    }
+                    
+                    // Remove the event listener
+                    websocket.removeEventListener('message', handleMessage);
+                    
+                    // Log loaded config
+                    Config.logConfig();
+                    
+                    resolve(Config);
+                }
+            } catch (error) {
+                console.error('Error parsing config response:', error);
+            }
+        };
+        
+        // Add event listener
+        websocket.addEventListener('message', handleMessage);
+        
+        // Request configuration
+        websocket.send(JSON.stringify({ type: 'get_config' }));
+    });
+};

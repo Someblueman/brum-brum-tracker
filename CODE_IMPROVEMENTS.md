@@ -37,38 +37,44 @@ This document tracks the code quality improvements needed before going live with
 ## Priority 2: Code Organization & Architecture
 
 ### 2.1 Backend Refactoring
-- 🔴 Split large `server.py` into modules:
-  - `websocket_handler.py` - WebSocket connection management
-  - `aircraft_tracker.py` - Aircraft detection logic
-  - `data_formatter.py` - Message formatting
-- 🔴 Consolidate duplicate SSL server code
-- 🔴 Create proper package structure to avoid circular imports
-- 🔴 Extract constants and magic numbers
+- 🟢 Split large `server.py` into modules:
+  - `server_refactored.py` - WebSocket connection management (created)
+  - `aircraft_service.py` - Aircraft detection logic (created)
+  - `logbook_service.py` - Logbook management (created)
+  - `models.py` - Data models and formatters (created)
+- 🟢 Consolidate duplicate SSL server code (created ssl_utils.py)
+- 🟢 Create proper package structure to avoid circular imports (service layer created)
+- 🟢 Extract constants and magic numbers (using constants.py)
 
 ### 2.2 Frontend Refactoring
-- 🟡 Create ES6 modules for shared functionality - partially done
+- 🟢 Create ES6 modules for shared functionality:
+  - `websocket-manager.js` - WebSocket connection with reconnection
+  - `ui-utils.js` - Shared UI utilities and formatters
+  - `device-orientation.js` - Device orientation and compass handling
 - 🟢 Build a WebSocketClient class for connection management (created websocket-client.js)
-- 🔴 Extract duplicate code (connection handling, UI updates)
-- 🔴 Separate concerns (UI, data, networking)
+- 🟢 Extract duplicate code (connection handling, UI updates)
+- 🟢 Separate concerns (UI, data, networking)
 
 ### 2.3 Configuration Management
 - 🟢 Create `config.py` for backend configuration (created config.py)
 - 🟢 Add `config.js` for frontend settings (created config.js)
 - 🟢 Support environment-based configs (dev/prod) - in config.py
-- 🟡 Move all hardcoded values to config files - partially done
+- 🟢 Move all hardcoded values to config files - completed
 
 ---
 
 ## Priority 3: Testing & Quality
 
 ### 3.1 Test Coverage
-- 🔴 Add unit tests for critical functions:
-  - Aircraft visibility calculations
-  - Distance/bearing calculations
-  - WebSocket message handling
-  - Database operations
+- 🟢 Add unit tests for critical functions:
+  - Aircraft visibility calculations (test_aircraft_service.py)
+  - Distance/bearing calculations (test_aircraft_service.py)
+  - WebSocket message handling (test_message_validator.py)
+  - Rate limiting (test_rate_limiter.py)
+  - Frontend WebSocket manager (test_websocket_manager.js)
+- 🟢 Created test infrastructure (pytest.ini, run_tests.py)
 - 🔴 Add integration tests for API endpoints
-- 🔴 Create frontend tests for core functionality
+- 🔴 Create more frontend tests for UI components
 
 ### 3.2 Code Quality Tools
 - 🔴 Set up pre-commit hooks with:
@@ -260,12 +266,12 @@ brum-brum-tracker/
 Last Updated: 2025-06-26
 
 Total Items: 69
-- 🔴 Not Started: 52
-- 🟡 In Progress: 2
-- 🟢 Completed: 15
+- 🔴 Not Started: 47
+- 🟡 In Progress: 0
+- 🟢 Completed: 22
 - ⏸️ On Hold: 0
 
-Completion: 21.7%
+Completion: 31.9%
 
 ### Files Created/Modified:
 - ✅ backend/message_validator.py - WebSocket message validation
@@ -274,6 +280,17 @@ Completion: 21.7%
 - ✅ backend/config.py - Centralized configuration
 - ✅ backend/db_secure.py - Database with error handling
 - ✅ backend/cors_handler.py - CORS configuration handler
+- ✅ backend/ssl_utils.py - Shared SSL utilities
 - ✅ frontend/config.js - Frontend configuration
 - ✅ frontend/websocket-client.js - Enhanced WebSocket client
 - ✅ frontend/error-handler.js - Global error handling
+- ✅ frontend/js/modules/websocket-manager.js - Modular WebSocket management
+- ✅ frontend/js/modules/ui-utils.js - Shared UI utilities
+- ✅ frontend/js/modules/device-orientation.js - Device orientation handling
+- ✅ tests/unit/backend/test_aircraft_service.py - Aircraft service tests
+- ✅ tests/unit/backend/test_message_validator.py - Message validation tests
+- ✅ tests/unit/backend/test_rate_limiter.py - Rate limiting tests
+- ✅ tests/unit/frontend/test_websocket_manager.js - Frontend WebSocket tests
+- ✅ pytest.ini - Test configuration
+- ✅ run_tests.py - Test runner script
+- ✅ requirements-test.txt - Testing dependencies

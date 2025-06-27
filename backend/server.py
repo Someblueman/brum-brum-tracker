@@ -461,6 +461,22 @@ class AircraftTracker:
                             'log': log_data
                         }
                         await websocket.send(json.dumps(response))
+                    elif data.get('type') == 'get_config':
+                        # Send configuration to frontend
+                        config_response = {
+                            'type': 'config',
+                            'config': {
+                                'home': {
+                                    'lat': HOME_LAT,
+                                    'lon': HOME_LON
+                                },
+                                'search': {
+                                    'radiusKm': SEARCH_RADIUS_KM,
+                                    'minElevationAngle': MIN_ELEVATION_ANGLE
+                                }
+                            }
+                        }
+                        await websocket.send(json.dumps(config_response))
                     else:
                         # Echo back other messages for now
                         await websocket.send(json.dumps({
