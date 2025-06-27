@@ -13,7 +13,7 @@ import logging
 from typing import Dict, Any, Optional, List
 from datetime import datetime
 
-from backend.db import add_to_logbook, get_logbook
+from backend.database.db import add_to_logbook, get_logbook
 
 logger = logging.getLogger(__name__)
 

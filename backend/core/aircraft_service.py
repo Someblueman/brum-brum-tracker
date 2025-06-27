@@ -13,26 +13,21 @@ import logging
 from typing import Dict, Any, Optional, List
 from datetime import datetime
 
-from backend.opensky_client import (
+from backend.api.opensky_client import (
     build_bounding_box,
     fetch_state_vectors,
     filter_aircraft,
     is_visible,
     select_best_plane
 )
-from backend.aircraft_data import get_aircraft_data
-from backend.aircraft_database import (
+from backend.utils.aircraft_data import get_aircraft_data
+from backend.utils.aircraft_database import (
     fetch_aircraft_details_from_hexdb,
     fetch_flight_route_from_hexdb,
     fetch_airport_info_from_hexdb
 )
-from utils.constants import (
-    HOME_LAT,
-    HOME_LON,
-    SEARCH_RADIUS_KM,
-    MIN_ELEVATION_ANGLE
-)
-from utils.geometry import calculate_eta
+from backend.utils.config import Config
+from backend.utils.geometry import calculate_eta
 
 logger = logging.getLogger(__name__)
 
@@ -155,7 +150,7 @@ class AircraftService:
         """
         try:
             # Build bounding box
-            bbox = build_bounding_box(HOME_LAT, HOME_LON, SEARCH_RADIUS_KM)
+            bbox = build_bounding_box(Config.HOME_LAT, Config.HOME_LON, Config.SEARCH_RADIUS_KM)
             
             # Fetch state vectors
             aircraft_list = fetch_state_vectors(bbox)
@@ -167,8 +162,8 @@ class AircraftService:
             logger.info(f"Received {len(aircraft_list)} aircraft from API")
             
             # Filter aircraft
-            filtered = filter_aircraft(aircraft_list, HOME_LAT, HOME_LON, SEARCH_RADIUS_KM)
-            visible = [a for a in filtered if is_visible(a, MIN_ELEVATION_ANGLE)]
+            filtered = filter_aircraft(aircraft_list, Config.HOME_LAT, Config.HOME_LON, Config.SEARCH_RADIUS_KM)
+            visible = [a for a in filtered if is_visible(a, Config.MIN_ELEVATION_ANGLE)]
             
             logger.info(f"After filtering: {len(filtered)} within range, {len(visible)} visible")
             

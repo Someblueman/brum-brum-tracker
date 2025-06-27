@@ -7,7 +7,7 @@ import math
 import logging
 import requests
 from typing import List, Dict, Any, Optional, Tuple
-from api_pool import get_global_pool
+from .api_pool import get_global_pool
 
 logger = logging.getLogger(__name__)
 

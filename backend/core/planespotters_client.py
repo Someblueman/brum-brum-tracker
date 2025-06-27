@@ -9,7 +9,7 @@ the information.
 import logging
 import time
 from typing import Dict, Optional, Any
-from api_pool import get_global_pool
+from backend.api.api_pool import get_global_pool
 
 logger = logging.getLogger(__name__)
 

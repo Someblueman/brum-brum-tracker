@@ -10,9 +10,9 @@ import websockets
 from websockets.server import WebSocketServerProtocol
 from datetime import datetime
 
-from backend.aircraft_service import AircraftService
-from backend.logbook_service import LogbookService
-from backend.opensky_client import select_best_plane
+from backend.core.aircraft_service import AircraftService
+from backend.core.logbook_service import LogbookService
+from backend.api.opensky_client import select_best_plane
 from utils.constants import (
     WEBSOCKET_HOST,
     WEBSOCKET_PORT,

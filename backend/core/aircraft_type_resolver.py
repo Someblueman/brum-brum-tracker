@@ -8,9 +8,9 @@ using multiple data sources in a prioritized order.
 import logging
 from typing import Optional, Dict, Any
 
-from backend.db import get_aircraft_from_cache, save_aircraft_to_cache
-from backend.aircraft_database import fetch_aircraft_details_from_hexdb
-from backend.planespotters_client import get_aircraft_type_string
+from backend.database.db import get_aircraft_from_cache, save_aircraft_to_cache
+from backend.utils.aircraft_database import fetch_aircraft_details_from_hexdb
+from backend.core.planespotters_client import get_aircraft_type_string
 
 logger = logging.getLogger(__name__)
 

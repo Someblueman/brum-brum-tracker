@@ -11,22 +11,22 @@ from typing import Set, Dict, Any, Optional, List
 import websockets
 from websockets.server import WebSocketServerProtocol
 
-from api.opensky_client import (
+from backend.api.opensky_client import (
     build_bounding_box,
     fetch_state_vectors,
     filter_aircraft,
     is_visible,
     select_best_plane
 )
-from database.db import get_aircraft_from_cache, add_to_logbook, get_logbook
-from utils.aircraft_data import get_aircraft_data
-from utils.aircraft_database import (
+from backend.database.db import get_aircraft_from_cache, add_to_logbook, get_logbook
+from backend.utils.aircraft_data import get_aircraft_data
+from backend.utils.aircraft_database import (
     fetch_flight_route_from_hexdb,
     fetch_airport_info_from_hexdb
 )
-from core.aircraft_type_resolver import resolve_aircraft_type
-from utils.auth import require_auth
-from utils.config import Config
+from backend.core.aircraft_type_resolver import resolve_aircraft_type
+from backend.utils.auth import require_auth
+from backend.utils.config import Config
 
 
 # Configure logging

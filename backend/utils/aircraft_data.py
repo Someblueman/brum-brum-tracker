@@ -5,7 +5,7 @@ import logging
 import random
 from typing import Dict, Optional
 
-from backend.db import save_aircraft_to_cache
+from backend.database.db import save_aircraft_to_cache
 
 logger = logging.getLogger(__name__)
 
