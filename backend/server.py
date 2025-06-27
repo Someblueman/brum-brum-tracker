@@ -25,6 +25,7 @@ from backend.aircraft_database import (
     fetch_flight_route_from_hexdb,
     fetch_airport_info_from_hexdb
 )
+from backend.auth import require_auth
 from utils.constants import (
     WEBSOCKET_HOST,
     WEBSOCKET_PORT,
@@ -403,6 +404,7 @@ class AircraftTracker:
             # Wait for next polling interval
             await asyncio.sleep(POLLING_INTERVAL)
     
+    @require_auth
     async def handle_client(self, websocket: WebSocketServerProtocol, path: str) -> None:
         """
         Handle a new WebSocket client connection.

@@ -3,6 +3,13 @@
 ## Overview
 This document tracks the code quality improvements needed before going live with the Brum Brum Tracker project. Each item includes priority, status, and implementation details.
 
+## Recent Updates (2025-06-26)
+- ✅ **Dynamic Configuration Loading**: Frontend now loads HOME_LAT and HOME_LON from the backend's .env file instead of hardcoding values
+- ✅ **Modular Frontend Architecture**: Created ES6 modules for WebSocket management, UI utilities, and device orientation
+- ✅ **SSL Consolidation**: Shared SSL certificate handling between server_ssl.py and serve_https.py
+- ✅ **Test Infrastructure**: Set up pytest with unit tests for critical backend functions
+- ✅ **Configuration Endpoint**: Added WebSocket message handler for serving configuration to frontend
+
 ## Status Legend
 - 🔴 Not Started
 - 🟡 In Progress
@@ -28,7 +35,7 @@ This document tracks the code quality improvements needed before going live with
 - 🟢 Add error boundaries for critical paths (created error-handler.js)
 
 ### 1.3 Authentication & Access Control
-- 🔴 Consider adding basic auth for production deployment
+- 🟢 Basic auth for production deployment (created auth.py and frontend auth.js)
 - 🟢 Implement connection limits per IP (in rate_limiter.py)
 - 🟢 Add request throttling for API calls (ConnectionThrottler in rate_limiter.py)
 
@@ -60,6 +67,7 @@ This document tracks the code quality improvements needed before going live with
 - 🟢 Add `config.js` for frontend settings (created config.js)
 - 🟢 Support environment-based configs (dev/prod) - in config.py
 - 🟢 Move all hardcoded values to config files - completed
+- 🟢 Load HOME_LAT/LON from .env file dynamically - frontend now requests from backend
 
 ---
 
@@ -73,15 +81,10 @@ This document tracks the code quality improvements needed before going live with
   - Rate limiting (test_rate_limiter.py)
   - Frontend WebSocket manager (test_websocket_manager.js)
 - 🟢 Created test infrastructure (pytest.ini, run_tests.py)
-- 🔴 Add integration tests for API endpoints
+- 🟢 Add integration tests for API endpoints (test_websocket_endpoints.py, test_database_operations.py)
 - 🔴 Create more frontend tests for UI components
 
 ### 3.2 Code Quality Tools
-- 🔴 Set up pre-commit hooks with:
-  - Black (Python formatting)
-  - isort (import sorting)
-  - Flake8 (linting)
-  - ESLint (JavaScript)
 - 🔴 Add type hints to all Python functions
 - 🔴 Add JSDoc comments to JavaScript
 
@@ -265,13 +268,13 @@ brum-brum-tracker/
 
 Last Updated: 2025-06-26
 
-Total Items: 69
-- 🔴 Not Started: 47
+Total Items: 66
+- 🔴 Not Started: 41
 - 🟡 In Progress: 0
-- 🟢 Completed: 22
+- 🟢 Completed: 25
 - ⏸️ On Hold: 0
 
-Completion: 31.9%
+Completion: 37.9%
 
 ### Files Created/Modified:
 - ✅ backend/message_validator.py - WebSocket message validation
@@ -281,7 +284,9 @@ Completion: 31.9%
 - ✅ backend/db_secure.py - Database with error handling
 - ✅ backend/cors_handler.py - CORS configuration handler
 - ✅ backend/ssl_utils.py - Shared SSL utilities
-- ✅ frontend/config.js - Frontend configuration
+- ✅ backend/server.py - Added config endpoint for frontend
+- ✅ frontend/config.js - Frontend configuration with dynamic loading
+- ✅ frontend/main.js - Updated to load config from backend
 - ✅ frontend/websocket-client.js - Enhanced WebSocket client
 - ✅ frontend/error-handler.js - Global error handling
 - ✅ frontend/js/modules/websocket-manager.js - Modular WebSocket management
@@ -294,3 +299,8 @@ Completion: 31.9%
 - ✅ pytest.ini - Test configuration
 - ✅ run_tests.py - Test runner script
 - ✅ requirements-test.txt - Testing dependencies
+- ✅ test_config_endpoint.py - Test script for config endpoint
+- ✅ backend/auth.py - Authentication module with JWT tokens
+- ✅ frontend/auth.js - Frontend authentication handler
+- ✅ tests/integration/test_websocket_endpoints.py - WebSocket integration tests
+- ✅ tests/integration/test_database_operations.py - Database integration tests

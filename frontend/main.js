@@ -64,6 +64,9 @@ let seenAircraft = new Set(); // Track aircraft that have already played sound
 let aircraftLastSeen = new Map(); // Track when each aircraft was last seen
 let sessionSpottedCount = 0; // New state for the session counter
 
+// Initialize authentication handler
+const authHandler = new AuthHandler();
+
 // Smoothing for compass readings
 const headingHistory = [];
 const HEADING_HISTORY_SIZE = 5; // Keep last 5 readings
@@ -229,6 +232,14 @@ function init() {
 
     isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
 
+    // Set up authentication handler
+    authHandler.onLoginRequired(() => {
+        authHandler.showLoginUI();
+    });
+    
+    // Make websocket available globally for auth handler
+    window.websocket = websocket;
+
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
     window.addEventListener('pageshow', function (event) {
@@ -366,7 +377,16 @@ function setupWebSocket() {
             console.log('📨 Received message:', event.data);
             try {
                 const data = JSON.parse(event.data);
-                handleMessage(data);
+                
+                // Check if this is an auth message
+                if (data.type === 'auth_required' || data.type === 'auth_response') {
+                    const authResponse = authHandler.handleAuthMessage(data);
+                    if (authResponse) {
+                        websocket.send(JSON.stringify(authResponse));
+                    }
+                } else {
+                    handleMessage(data);
+                }
             } catch (error) {
                 console.error('Failed to parse message:', error);
             }
@@ -457,6 +477,11 @@ function handleMessage(data) {
 
         case 'no_aircraft':
             showNoAircraft();
+            break;
+
+        case 'config':
+            // Config messages are handled in loadConfigFromBackend
+            // This case prevents the "Unknown message type" warning
             break;
 
         default:
