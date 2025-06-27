@@ -5,9 +5,9 @@ WebSocket server with SSL support for secure real-time aircraft data streaming.
 import asyncio
 import json
 import logging
-from backend.server import AircraftTracker, websocket_handler
-from backend.ssl_utils import create_ssl_context, log_ssl_instructions
-from backend.config import Config
+from server import AircraftTracker, websocket_handler
+from backend.utils.ssl_utils import create_ssl_context, log_ssl_instructions
+from backend.utils.config import Config
 
 # Configure logging
 logging.basicConfig(
