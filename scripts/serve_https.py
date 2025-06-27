@@ -12,11 +12,11 @@ import sys
 from pathlib import Path
 from typing import Any, Optional
 
-# Add project root to path
-sys.path.insert(0, str(Path(__file__).parent))
+# Add backend directory to path
+sys.path.insert(0, str(Path(__file__).parent.parent / 'backend'))
 
-from backend.config import Config
-from backend.ssl_utils import create_ssl_context, SSLConfig, check_certificates_exist
+from utils.config import Config
+from utils.ssl_utils import create_ssl_context, SSLConfig, check_certificates_exist
 
 
 class CORSRequestHandler(http.server.SimpleHTTPRequestHandler):
@@ -25,7 +25,7 @@ class CORSRequestHandler(http.server.SimpleHTTPRequestHandler):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         # Set the directory to serve
         try:
-            super().__init__(*args, directory='frontend', **kwargs)
+            super().__init__(*args, directory='frontend/src', **kwargs)
         except (ConnectionResetError, BrokenPipeError, ssl.SSLError) as e:
             # Silently handle connection errors
             pass
