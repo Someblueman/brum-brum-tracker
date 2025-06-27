@@ -25,6 +25,7 @@ from backend.aircraft_database import (
     fetch_flight_route_from_hexdb,
     fetch_airport_info_from_hexdb
 )
+from backend.auth import require_auth
 from utils.constants import (
     WEBSOCKET_HOST,
     WEBSOCKET_PORT,
@@ -142,9 +143,14 @@ class AircraftTracker:
         self.connected_clients: Set[WebSocketServerProtocol] = set()
         self.last_aircraft_data: Optional[Dict[str, Any]] = None
         self.is_polling = False
-        self.spotted_aircraft: Set[str] = set()  # Track all aircraft we've ever seen
-        self.visible_aircraft: Set[str] = set()  # Track aircraft that have been visible
+        # Use dict with timestamps to track aircraft and enable cleanup
+        self.spotted_aircraft: Dict[str, float] = {}  # icao24 -> first_seen_timestamp
+        self.visible_aircraft: Dict[str, float] = {}  # icao24 -> last_seen_timestamp
         self.polling_task: Optional[asyncio.Task] = None
+        self.cleanup_task: Optional[asyncio.Task] = None
+        # Cleanup old entries every hour
+        self.MAX_TRACKING_AGE_HOURS = 24  # Keep aircraft data for 24 hours
+        self.CLEANUP_INTERVAL_SECONDS = 3600  # Run cleanup every hour
     
     def format_aircraft_message(self, aircraft: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -307,6 +313,32 @@ class AircraftTracker:
         if disconnected_clients:
             logger.info(f"Removed {len(disconnected_clients)} disconnected clients")
     
+    def cleanup_old_aircraft(self) -> None:
+        """Remove old aircraft entries to prevent memory leaks."""
+        current_time = time.time()
+        max_age_seconds = self.MAX_TRACKING_AGE_HOURS * 3600
+        
+        # Clean spotted aircraft
+        old_spotted = [icao for icao, timestamp in self.spotted_aircraft.items() 
+                      if current_time - timestamp > max_age_seconds]
+        for icao in old_spotted:
+            del self.spotted_aircraft[icao]
+        
+        # Clean visible aircraft
+        old_visible = [icao for icao, timestamp in self.visible_aircraft.items() 
+                      if current_time - timestamp > max_age_seconds]
+        for icao in old_visible:
+            del self.visible_aircraft[icao]
+        
+        if old_spotted or old_visible:
+            logger.info(f"Cleaned up {len(old_spotted)} spotted and {len(old_visible)} visible aircraft entries")
+    
+    async def periodic_cleanup(self) -> None:
+        """Periodically clean up old aircraft entries."""
+        while self.is_polling:
+            await asyncio.sleep(self.CLEANUP_INTERVAL_SECONDS)
+            self.cleanup_old_aircraft()
+    
     async def polling_loop(self) -> None:
         """Main polling loop for fetching aircraft data."""
         logger.info("Starting aircraft polling loop")
@@ -333,10 +365,11 @@ class AircraftTracker:
                     logger.info(f"Filtered to {len(filtered)} aircraft within criteria")
                     
                     # Log first-time spotted aircraft
+                    current_time = time.time()
                     for aircraft in filtered:
                         icao = aircraft['icao24']
                         if icao not in self.spotted_aircraft:
-                            self.spotted_aircraft.add(icao)
+                            self.spotted_aircraft[icao] = current_time
                             logger.info(f"FIRST SPOTTED: {icao} (callsign: {aircraft.get('callsign', 'N/A')}) "
                                       f"at {aircraft['distance_km']:.1f}km, altitude: {aircraft['baro_altitude']}m")
                     
@@ -348,7 +381,7 @@ class AircraftTracker:
                     for aircraft in visible:
                         icao = aircraft['icao24']
                         if icao not in self.visible_aircraft:
-                            self.visible_aircraft.add(icao)
+                            self.visible_aircraft[icao] = current_time
                             # Get formatted data to log
                             formatted_plane = self.format_aircraft_message(aircraft)
                             plane_type = formatted_plane['aircraft_type']
@@ -403,6 +436,7 @@ class AircraftTracker:
             # Wait for next polling interval
             await asyncio.sleep(POLLING_INTERVAL)
     
+    @require_auth
     async def handle_client(self, websocket: WebSocketServerProtocol, path: str) -> None:
         """
         Handle a new WebSocket client connection.
@@ -444,6 +478,7 @@ class AircraftTracker:
         if len(self.connected_clients) == 1 and not self.is_polling:
             self.is_polling = True
             self.polling_task = asyncio.create_task(self.polling_loop())
+            self.cleanup_task = asyncio.create_task(self.periodic_cleanup())
         
         try:
             # Keep connection alive and handle messages
@@ -504,7 +539,13 @@ class AircraftTracker:
                         await self.polling_task
                     except asyncio.CancelledError:
                         pass
-                logger.info("Stopped polling - no clients connected")
+                if self.cleanup_task:
+                    self.cleanup_task.cancel()
+                    try:
+                        await self.cleanup_task
+                    except asyncio.CancelledError:
+                        pass
+                logger.info("Stopped polling and cleanup - no clients connected")
 
 
 # Global tracker instance

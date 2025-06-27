@@ -64,6 +64,13 @@ let seenAircraft = new Set(); // Track aircraft that have already played sound
 let aircraftLastSeen = new Map(); // Track when each aircraft was last seen
 let sessionSpottedCount = 0; // New state for the session counter
 
+// Cleanup old aircraft data every 5 minutes
+const AIRCRAFT_CLEANUP_INTERVAL = 5 * 60 * 1000; // 5 minutes
+const MAX_AIRCRAFT_AGE = 30 * 60 * 1000; // 30 minutes
+
+// Initialize authentication handler
+const authHandler = new AuthHandler();
+
 // Smoothing for compass readings
 const headingHistory = [];
 const HEADING_HISTORY_SIZE = 5; // Keep last 5 readings
@@ -148,12 +155,21 @@ let activeBrumSet = [];
 let atcAudioSet = [];
 const ATC_SOUND_CHANCE = 0.2; // 20% chance to play an ATC sound
 
+/**
+ * Convert country code to flag emoji
+ * @param {string} countryCode - Two-letter country code (e.g., 'US', 'GB')
+ * @returns {string} Flag emoji representation or empty string if invalid
+ */
 function getFlagEmoji(countryCode) {
     if (!countryCode || countryCode.length !== 2) return '';
     const codePoints = countryCode.toUpperCase().split('').map(char => 127397 + char.charCodeAt());
     return String.fromCodePoint(...codePoints);
 }
 
+/**
+ * Reset UI to initial start screen state
+ * Closes WebSocket connections and resets all visual elements
+ */
 function resetUI() {
     console.log('Resetting UI to its initial start screen state.');
 
@@ -228,6 +244,14 @@ function init() {
     // Map will be initialized after config is loaded from backend
 
     isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+
+    // Set up authentication handler
+    authHandler.onLoginRequired(() => {
+        authHandler.showLoginUI();
+    });
+    
+    // Make websocket available globally for auth handler
+    window.websocket = websocket;
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
@@ -366,7 +390,16 @@ function setupWebSocket() {
             console.log('📨 Received message:', event.data);
             try {
                 const data = JSON.parse(event.data);
-                handleMessage(data);
+                
+                // Check if this is an auth message
+                if (data.type === 'auth_required' || data.type === 'auth_response') {
+                    const authResponse = authHandler.handleAuthMessage(data);
+                    if (authResponse) {
+                        websocket.send(JSON.stringify(authResponse));
+                    }
+                } else {
+                    handleMessage(data);
+                }
             } catch (error) {
                 console.error('Failed to parse message:', error);
             }
@@ -457,6 +490,11 @@ function handleMessage(data) {
 
         case 'no_aircraft':
             showNoAircraft();
+            break;
+
+        case 'config':
+            // Config messages are handled in loadConfigFromBackend
+            // This case prevents the "Unknown message type" warning
             break;
 
         default:
@@ -979,6 +1017,30 @@ function handleVisibilityChange() {
         }
     }
 }
+
+/**
+ * Clean up old aircraft tracking data to prevent memory leaks
+ */
+function cleanupOldAircraftData() {
+    const now = Date.now();
+    let cleaned = 0;
+    
+    // Clean up aircraftLastSeen map
+    for (const [icao, lastSeen] of aircraftLastSeen.entries()) {
+        if (now - lastSeen > MAX_AIRCRAFT_AGE) {
+            aircraftLastSeen.delete(icao);
+            seenAircraft.delete(icao);
+            cleaned++;
+        }
+    }
+    
+    if (cleaned > 0) {
+        console.log(`Cleaned up ${cleaned} old aircraft entries`);
+    }
+}
+
+// Start periodic cleanup
+setInterval(cleanupOldAircraftData, AIRCRAFT_CLEANUP_INTERVAL);
 
 /**
  * Initialize the Leaflet map

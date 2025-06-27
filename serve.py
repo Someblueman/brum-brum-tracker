@@ -9,6 +9,7 @@ import socketserver
 import os
 import sys
 from pathlib import Path
+from typing import Any, Tuple
 
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent))
@@ -19,11 +20,11 @@ from utils.constants import FRONTEND_HOST, FRONTEND_PORT
 class CORSRequestHandler(http.server.SimpleHTTPRequestHandler):
     """HTTP request handler with CORS headers."""
     
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         # Set the directory to serve
         super().__init__(*args, directory='frontend', **kwargs)
     
-    def end_headers(self):
+    def end_headers(self) -> None:
         """Add CORS headers to response."""
         self.send_header('Access-Control-Allow-Origin', '*')
         self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
@@ -31,17 +32,17 @@ class CORSRequestHandler(http.server.SimpleHTTPRequestHandler):
         self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
         super().end_headers()
     
-    def do_OPTIONS(self):
+    def do_OPTIONS(self) -> None:
         """Handle OPTIONS requests for CORS preflight."""
         self.send_response(200)
         self.end_headers()
     
-    def log_message(self, format, *args):
+    def log_message(self, format: str, *args: Any) -> None:
         """Custom log format."""
         print(f"{self.address_string()} - {format % args}")
 
 
-def main():
+def main() -> None:
     """Start the HTTP server."""
     print(f"Starting frontend server on http://{FRONTEND_HOST}:{FRONTEND_PORT}")
     print(f"Serving files from: {os.path.abspath('frontend')}")

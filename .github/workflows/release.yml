@@ -1,0 +1,66 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r requirements-test.txt
+      
+      - name: Run tests
+        run: pytest tests/ -v
+      
+      - name: Build artifacts
+        run: |
+          # Create distribution directory
+          mkdir -p dist
+          
+          # Copy essential files
+          cp -r backend dist/
+          cp -r frontend dist/
+          cp -r utils dist/
+          cp requirements.txt dist/
+          cp README.md dist/
+          cp LICENSE dist/ || true
+          
+          # Create archive
+          cd dist
+          tar -czf ../brum-brum-tracker-${{ github.ref_name }}.tar.gz *
+          cd ..
+      
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: brum-brum-tracker-${{ github.ref_name }}.tar.gz
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          body: |
+            ## Brum Brum Tracker ${{ github.ref_name }}
+            
+            ### Installation
+            1. Download the release archive
+            2. Extract the files
+            3. Follow the installation instructions in README.md
+            
+            ### What's Changed
+            See the automatically generated release notes below.

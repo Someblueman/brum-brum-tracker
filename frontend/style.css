@@ -507,6 +507,7 @@ body {
     margin-top: 20px;
     width: 100%;
     max-width: 800px;
+    flex-wrap: wrap;
 }
 
 .info-item {
@@ -630,10 +631,20 @@ body {
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
     flex: 1;
     margin: 0 10px;
+    overflow: hidden;
+    max-width: 100%;
 }
 
 .stat-item {
     text-align: center;
+    flex: 1;
+    min-width: 100px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    padding: 0 5px;
 }
 
 .stat-label {
@@ -643,6 +654,8 @@ body {
     margin-bottom: 5px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    text-align: center;
+    width: 100%;
 }
 
 .stat-value {
@@ -650,6 +663,16 @@ body {
     font-size: 18px;
     font-weight: bold;
     color: #2c3e50;
+    text-align: center;
+    width: 100%;
+}
+
+/* Specific style for aircraft type */
+#type-display {
+    font-size: 14px;
+    word-break: break-word;
+    overflow-wrap: break-word;
+    hyphens: auto;
 }
 
 /* Utility Classes */
