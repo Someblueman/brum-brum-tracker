@@ -3,7 +3,6 @@ Unit tests for message validation
 """
 
 import unittest
-from unittest.mock import Mock
 
 import sys
 import os

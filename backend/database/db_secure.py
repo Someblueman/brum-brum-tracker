@@ -7,7 +7,7 @@ import sqlite3
 import json
 import logging
 import threading
-from typing import Optional, Dict, Any, List, Union
+from typing import Optional, Dict, Any, List
 from pathlib import Path
 from datetime import datetime, timedelta
 from contextlib import contextmanager

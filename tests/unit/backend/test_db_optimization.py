@@ -2,11 +2,9 @@
 Tests for database optimization.
 """
 
-import pytest
 import sqlite3
 import tempfile
 import os
-from datetime import datetime, timedelta
 
 from backend.optimize_db_indexes import DatabaseOptimizer
 from backend.db import AircraftDatabase

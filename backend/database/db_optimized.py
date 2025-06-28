@@ -3,14 +3,12 @@ Optimized database operations with query improvements and caching.
 Provides batch operations, prepared statements, and query optimization.
 """
 
-import sqlite3
-import json
 import logging
 import time
 from typing import Optional, Dict, Any, List, Tuple
 from datetime import datetime, timedelta
 from functools import lru_cache
-from backend.db_pool import get_pooled_database, PooledAircraftDatabase
+from backend.db_pool import get_pooled_database
 
 logger = logging.getLogger(__name__)
 

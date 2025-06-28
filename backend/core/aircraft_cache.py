@@ -6,10 +6,9 @@ Implements multi-level caching with TTL and LRU eviction.
 import time
 import logging
 import json
-from typing import Dict, Any, Optional, List, Tuple
+from typing import Dict, Any, Optional, List
 from collections import OrderedDict
 from threading import Lock
-from datetime import datetime, timedelta
 import hashlib
 
 logger = logging.getLogger(__name__)

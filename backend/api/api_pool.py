@@ -9,7 +9,7 @@ performance.
 import time
 import logging
 import threading
-from typing import Dict, Optional, Any, Tuple
+from typing import Dict, Optional, Tuple
 from urllib.parse import urlparse
 import requests
 from requests.adapters import HTTPAdapter

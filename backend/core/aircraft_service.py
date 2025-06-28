@@ -17,8 +17,7 @@ from backend.api.opensky_client import (
     build_bounding_box,
     fetch_state_vectors,
     filter_aircraft,
-    is_visible,
-    select_best_plane
+    is_visible
 )
 from backend.utils.aircraft_data import get_aircraft_data
 from backend.utils.aircraft_database import (

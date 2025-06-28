@@ -12,7 +12,7 @@ import asyncio
 import json
 import pytest
 import websockets
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 import os
 import sys
 

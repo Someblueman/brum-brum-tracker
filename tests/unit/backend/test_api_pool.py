@@ -2,10 +2,9 @@
 Tests for API connection pooling.
 """
 
-import pytest
 import time
 import threading
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import patch, MagicMock
 import requests
 
 from backend.api_pool import APIConnectionPool, get_global_pool, close_global_pool

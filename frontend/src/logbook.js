@@ -39,6 +39,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         websocket.onopen = () => {
             console.log('Connected! Requesting logbook data...');
+            
+            // Identify as a logbook client
+            websocket.send(JSON.stringify({
+                type: 'client_identify',
+                client_type: 'logbook'
+            }));
+            
             // Provide a fallback to an empty string if 'logbookLastUpdate' is not set
             const lastUpdate = localStorage.getItem('logbookLastUpdate') || '';
             websocket.send(JSON.stringify({

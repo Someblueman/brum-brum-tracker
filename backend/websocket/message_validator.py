@@ -16,7 +16,7 @@ communication layer for the real-time aircraft tracking system.
 """
 
 import json
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any
 from enum import Enum
 
 

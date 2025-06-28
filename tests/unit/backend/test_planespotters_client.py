@@ -2,8 +2,7 @@
 Tests for Planespotters API client.
 """
 
-import pytest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import patch, MagicMock
 import time
 
 from backend.planespotters_client import (

@@ -5,7 +5,6 @@ Unit tests for rate limiting
 import unittest
 import asyncio
 import time
-from unittest.mock import Mock, patch
 
 import sys
 import os

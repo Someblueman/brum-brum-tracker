@@ -380,6 +380,12 @@ function setupWebSocket() {
                 }
             }
             
+            // Identify as a tracker client
+            websocket.send(JSON.stringify({
+                type: 'client_identify',
+                client_type: 'tracker'
+            }));
+            
             updateConnectionStatus('connected');
             clearTimeout(reconnectTimeout);
             reconnectAttempts = 0; // Reset attempts on successful connection

@@ -8,24 +8,18 @@ import logging
 import time
 import uuid
 from datetime import datetime
-from typing import Set, Dict, Any, Optional, List
+from typing import Set, Dict, Any, Optional
 import websockets
 from websockets.server import WebSocketServerProtocol
 
 from backend.opensky_client import (
     build_bounding_box,
     fetch_state_vectors,
-    filter_aircraft,
     is_visible,
     select_best_plane
 )
 from backend.db import get_aircraft_from_cache, add_to_logbook, get_logbook
 from backend.aircraft_data import get_aircraft_data
-from backend.aircraft_database import (
-    fetch_aircraft_details_from_hexdb,
-    fetch_flight_route_from_hexdb,
-    fetch_airport_info_from_hexdb
-)
 from backend.message_validator import MessageValidator, ValidationError, MessageType
 from backend.rate_limiter import RateLimiter, RateLimitExceeded, ConnectionThrottler
 from utils.constants import (

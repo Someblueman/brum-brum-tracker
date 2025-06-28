@@ -4,7 +4,6 @@ Manages SQLite connection and aircraft image cache.
 """
 
 import sqlite3
-import json
 import logging
 from typing import Optional, Dict, Any, List
 from pathlib import Path

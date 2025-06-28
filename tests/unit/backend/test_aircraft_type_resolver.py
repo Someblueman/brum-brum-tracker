@@ -2,8 +2,7 @@
 Tests for aircraft type resolver.
 """
 
-import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 from backend.aircraft_type_resolver import (
     simplify_aircraft_type,

@@ -6,7 +6,7 @@ using multiple data sources in a prioritized order.
 """
 
 import logging
-from typing import Optional, Dict, Any
+from typing import Dict, Any
 
 from backend.database.db import get_aircraft_from_cache, save_aircraft_to_cache
 from backend.utils.aircraft_database import fetch_aircraft_details_from_hexdb

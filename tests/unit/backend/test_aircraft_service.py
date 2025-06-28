@@ -3,9 +3,6 @@ Unit tests for aircraft service
 """
 
 import unittest
-from unittest.mock import Mock, patch
-import math
-from datetime import datetime
 
 # Import the functions we're testing
 import sys
