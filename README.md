@@ -2,6 +2,10 @@
 
 A real-time aircraft tracker designed for toddlers that shows planes overhead with directional arrows, images, and sound notifications.
 
+## Background
+
+My son Teddy is turning 2 soon, and **ABSOLUTELY** loves machines of all sorts, and since we live in a part of the UK that sees quite a few flights arriving and departing the London area airports, I thought I would build a small tracker that alerts him that there's about to be an airplane flying overhead. It was also an opportunity to play around with some of the recent agentic AI models
+
 ## Features
 
 - **Real-time tracking** of aircraft within 50km radius
