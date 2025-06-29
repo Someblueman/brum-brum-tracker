@@ -1,0 +1,717 @@
+@import url('https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap');
+
+/* Reset and Base Styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Fredoka One', cursive;
+    background: linear-gradient(to bottom, #87CEEB 0%, #B0E0E6 100%);
+    color: #333;
+    overflow: hidden;
+    height: 100vh;
+    position: relative;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+/* Background Map */
+#map {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+    opacity: 0.3;
+    background-color: #87CEEB;
+    /* Fallback color */
+}
+
+/* Animated Clouds */
+#cloud-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    /* Important to hide clouds when they drift off-screen */
+    z-index: 1;
+    pointer-events: none;
+    /* Make sure clouds don't interfere with clicks */
+}
+
+.cloud {
+    position: absolute;
+    background: white;
+    border-radius: 50%;
+    opacity: 0.8;
+    box-shadow: 0 0 25px rgba(0, 0, 0, 0.1);
+}
+
+/* We use pseudo-elements to build the fluffy cloud shape */
+.cloud::before,
+.cloud::after {
+    content: '';
+    position: absolute;
+    background: white;
+    border-radius: 50%;
+}
+
+/* Define different cloud sizes and starting positions */
+.cloud-1 {
+    width: 200px;
+    height: 60px;
+    top: 10%;
+    animation: drift 70s linear -10s infinite reverse;
+}
+
+.cloud-1::before {
+    width: 100px;
+    height: 100px;
+    top: -50px;
+    left: 30px;
+}
+
+.cloud-1::after {
+    width: 120px;
+    height: 120px;
+    top: -30px;
+    right: 20px;
+}
+
+.cloud-2 {
+    width: 250px;
+    height: 80px;
+    top: 25%;
+    animation: drift 90s linear -30s infinite;
+}
+
+.cloud-2::before {
+    width: 130px;
+    height: 130px;
+    top: -60px;
+    left: 50px;
+}
+
+.cloud-2::after {
+    width: 150px;
+    height: 150px;
+    top: -40px;
+    right: 40px;
+}
+
+.cloud-3 {
+    width: 150px;
+    height: 50px;
+    top: 65%;
+    animation: drift 85s linear -20s infinite reverse;
+}
+
+.cloud-3::before {
+    width: 80px;
+    height: 80px;
+    top: -40px;
+    left: 20px;
+}
+
+.cloud-3::after {
+    width: 100px;
+    height: 100px;
+    top: -30px;
+    right: 10px;
+}
+
+.cloud-4 {
+    width: 300px;
+    height: 90px;
+    top: 80%;
+    animation: drift 65s linear -45s infinite;
+}
+
+.cloud-4::before {
+    width: 150px;
+    height: 150px;
+    top: -70px;
+    left: 60px;
+}
+
+.cloud-4::after {
+    width: 180px;
+    height: 180px;
+    top: -50px;
+    right: 50px;
+}
+
+/* The animation that makes the clouds drift */
+@keyframes drift {
+    from {
+        transform: translateX(-350px);
+    }
+
+    /* Start off-screen to the left */
+    to {
+        transform: translateX(100vw);
+    }
+
+    /* End off-screen to the right */
+}
+
+
+#app {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-evenly;
+    /* Adjusted for better layout */
+    padding: 20px;
+    z-index: 2;
+}
+
+/* Start Overlay Styles */
+#start-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(to bottom, #87CEEB 0%, #98D8E8 100%);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 200;
+    padding: 20px;
+}
+
+#welcome-text {
+    font-family: 'Fredoka One', cursive;
+    color: white;
+    text-align: center;
+    text-shadow: 3px 3px 0px rgba(0, 0, 0, 0.15);
+    margin-bottom: 40px;
+}
+
+#welcome-text h1 {
+    font-size: 3.5rem;
+    margin-bottom: 10px;
+}
+
+#welcome-text p {
+    font-size: 1.8rem;
+    opacity: 0.9;
+}
+
+#start-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+#start-button-mamma-pappa,
+#start-button-mormor-pops {
+    padding: 20px 40px;
+    font-size: 20px;
+    font-family: 'Fredoka One', cursive;
+    cursor: pointer;
+    color: white;
+    border: none;
+    border-radius: 50px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+    transition: all 0.2s ease-in-out;
+}
+
+#start-button-mamma-pappa {
+    background-color: #FF6347;
+    /* Tomato color */
+}
+
+#start-button-mormor-pops {
+    background-color: #3b82f6;
+    /* Blue color */
+}
+
+#start-button-mamma-pappa:hover,
+#start-button-mormor-pops:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+}
+
+
+/* Connection Status */
+#connection-status {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(5px);
+    border-radius: 20px;
+    font-size: 14px;
+    z-index: 100;
+    color: #555;
+    border: 2px solid rgba(255, 255, 255, 0.9);
+}
+
+.status-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #ccc;
+    border: 2px solid white;
+}
+
+#connection-status.connected .status-dot {
+    background: #4CAF50;
+}
+
+#connection-status.disconnected .status-dot {
+    background: #f44336;
+}
+
+/* New styles for the persistent session tracker */
+#session-tracker {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 8px 16px;
+    background: rgba(59, 130, 246, 0.8);
+    /* Blue background */
+    backdrop-filter: blur(5px);
+    border-radius: 20px;
+    font-size: 16px;
+    z-index: 100;
+    color: white;
+    /* White text */
+    border: 2px solid rgba(255, 255, 255, 0.9);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: opacity 0.5s ease-in-out;
+    opacity: 1;
+}
+
+#session-tracker.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* Main Display */
+#main-display {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    /* gap: 20px; */
+    transition: opacity 0.3s ease;
+}
+
+#main-display.hidden {
+    display: none;
+}
+
+/* Arrow Container */
+#arrow-container {
+    position: relative;
+    width: 220px;
+    height: 220px;
+    margin-bottom: 70px;
+}
+
+#arrow-animator {
+    width: 100%;
+    height: 100%;
+    transition: all 0.5s ease;
+}
+
+#arrow-animator.glow {
+    animation: pulse-glow 2s ease-in-out infinite;
+}
+
+.route-info {
+    flex: 0 0 auto;
+    min-width: 100px;
+}
+
+.route-details {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 5px;
+}
+
+.route-flag {
+    font-size: 24px;
+    line-height: 1;
+}
+
+.route-country {
+    font-size: 14px;
+    font-weight: bold;
+    color: #333;
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+@keyframes pulse-glow {
+
+    0%,
+    100% {
+        transform: scale(1);
+        filter: drop-shadow(0 0 10px #FFD700);
+    }
+
+    50% {
+        transform: scale(1.1);
+        filter: drop-shadow(0 0 25px #FFD700);
+    }
+}
+
+#direction-arrow {
+    width: 100%;
+    height: 100%;
+    transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.2));
+}
+
+#distance-display {
+    position: absolute;
+    bottom: -40px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #FF6347;
+    color: white;
+    padding: 8px 20px;
+    border-radius: 20px;
+    font-size: 18px;
+    white-space: nowrap;
+    z-index: 10;
+    border: 3px solid white;
+}
+
+/* Aircraft Container */
+#aircraft-container {
+    position: relative;
+    width: 300px;
+    height: 200px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    filter: drop-shadow(0 10px 15px rgba(0, 0, 0, 0.2));
+    margin-top: 20px;
+}
+
+#aircraft-stack {
+    position: relative;
+    width: 100%;
+    height: 160px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#plane-image {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    background: rgba(255, 255, 255, 0.5);
+    border-radius: 20px;
+    padding: 10px;
+    border: 4px solid white;
+    position: relative;
+    z-index: 10;
+}
+
+.stacked-aircraft {
+    /* This is the key fix: it allows z-index to work */
+    position: absolute;
+
+    /* Make the stacked images slightly smaller */
+    max-width: 95%;
+    max-height: 95%;
+
+    /* Copy the visual style from the main image */
+    object-fit: contain;
+    background: rgba(255, 255, 255, 0.5);
+    border-radius: 20px;
+    padding: 10px;
+    border: 4px solid white;
+    transition: transform 0.3s ease;
+}
+
+/* Fan out the second plane in the stack */
+#aircraft-stack .stacked-aircraft:nth-of-type(2) {
+    transform: rotate(-6deg) translateX(-20px);
+}
+
+/* Fan out the third plane in the stack */
+#aircraft-stack .stacked-aircraft:nth-of-type(3) {
+    transform: rotate(6deg) translateX(20px);
+}
+
+/* Fan out the fourth plane in the stack */
+#aircraft-stack .stacked-aircraft:nth-of-type(4) {
+    transform: rotate(-10deg) translateX(-40px);
+}
+
+
+#callsign-display {
+    position: absolute;
+    top: -35px;
+    background: #3b82f6;
+    color: white;
+    padding: 6px 15px;
+    border-radius: 20px;
+    font-size: 18px;
+    white-space: nowrap;
+    z-index: 15;
+    border: 3px solid white;
+}
+
+.aircraft-count {
+    position: absolute;
+    bottom: 0px;
+    right: 10px;
+    background: #FF6347;
+    color: white;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 14px;
+    border: 2px solid white;
+    z-index: 20;
+}
+
+
+.aircraft-count.hidden {
+    display: none;
+}
+
+/* Flight Information */
+#flight-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 15px;
+    margin-top: 20px;
+    width: 100%;
+    max-width: 800px;
+    flex-wrap: wrap;
+}
+
+.info-item {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(10px);
+    border: 3px solid rgba(255, 255, 255, 0.9);
+    padding: 10px 15px;
+    border-radius: 15px;
+    text-align: center;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.info-label {
+    font-size: 12px;
+    color: #555;
+    margin-bottom: 5px;
+    display: block;
+}
+
+.info-value {
+    font-size: 24px;
+    font-weight: bold;
+    color: #333;
+}
+
+/* No Aircraft Message */
+#no-aircraft {
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    background: rgba(255, 255, 255, 0.8);
+    border-radius: 20px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(10px);
+    max-width: 400px;
+}
+
+#no-aircraft:not(.hidden) {
+    animation: fadeIn 0.5s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+#no-aircraft h2 {
+    font-size: 28px;
+    margin-bottom: 15px;
+    color: #2d3748;
+}
+
+#no-aircraft p {
+    font-size: 16px;
+    color: #718096;
+}
+
+#nav-container {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    z-index: 100;
+    display: flex;
+    gap: 10px;
+}
+
+/* Remove positioning from the individual button */
+#dashboard-link,
+#logbook-link {
+    /* position: fixed; <-- REMOVE */
+    /* top: 1rem; <-- REMOVE */
+    /* right: 1rem; <-- REMOVE */
+    /* z-index: 100; <-- REMOVE */
+    padding: 0.5rem 1rem;
+    background: #3b82f6;
+    color: white;
+    text-decoration: none;
+    border-radius: 20px;
+    font-weight: normal;
+    font-size: 1rem;
+    border: 3px solid white;
+}
+
+#logbook-link {
+    background: #FF6347;
+}
+
+/* Compass Indicator */
+.compass-status {
+    position: absolute;
+    top: -25px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 12px;
+    color: #666;
+    background: rgba(255, 255, 255, 0.8);
+    padding: 4px 10px;
+    border-radius: 10px;
+    white-space: nowrap;
+    z-index: 10;
+}
+
+/* Flight Stats */
+.flight-stats {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    padding: 15px;
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 15px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    flex: 1;
+    margin: 0 10px;
+    overflow: hidden;
+    max-width: 100%;
+}
+
+.stat-item {
+    text-align: center;
+    flex: 1;
+    min-width: 100px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    padding: 0 5px;
+}
+
+.stat-label {
+    display: block;
+    font-size: 12px;
+    color: #666;
+    margin-bottom: 5px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    text-align: center;
+    width: 100%;
+}
+
+.stat-value {
+    display: block;
+    font-size: 18px;
+    font-weight: bold;
+    color: #2c3e50;
+    text-align: center;
+    width: 100%;
+}
+
+/* Specific style for aircraft type */
+#type-display {
+    font-size: 14px;
+    word-break: break-word;
+    overflow-wrap: break-word;
+    hyphens: auto;
+}
+
+/* Utility Classes */
+.hidden {
+    display: none !important;
+}
+
+
+/* Responsive */
+@media (max-width: 768px) {
+    #welcome-text h1 {
+        font-size: 2.5rem;
+    }
+
+    #welcome-text p {
+        font-size: 1.5rem;
+    }
+
+    #arrow-container {
+        width: 180px;
+        height: 180px;
+    }
+
+    #aircraft-container {
+        width: 250px;
+        height: 160px;
+    }
+
+    #flight-info {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .flight-stats {
+        order: -1; /* Move stats to top on mobile */
+        margin: 0 0 10px 0;
+    }
+    
+    .route-info {
+        width: 100%;
+    }
+}

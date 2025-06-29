@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Brum Brum Dashboard</title>
+
+    <link rel="icon" type="image/png" href="assets/icon-192.png">
+    <link rel="shortcut icon" href="assets/icon-192.png">
+
+    <link rel="stylesheet" href="dashboard.css">
+    <link rel="manifest" href="manifest.json">
+</head>
+
+<body>
+    <div id="dashboard-app">
+        <!-- Header -->
+        <header id="dashboard-header">
+            <h1>Incoming Planes</h1>
+            <div id="connection-indicator">
+                <span class="status-dot"></span>
+                <span class="status-text">Connecting...</span>
+            </div>
+            <a href="index.html" class="nav-button">Back to Tracker</a>
+        </header>
+
+        <!-- Aircraft Table -->
+        <div id="aircraft-container">
+            <table id="aircraft-table">
+                <thead>
+                    <tr>
+                        <th>Flight</th>
+                        <th>Distance</th>
+                        <th>ETA</th>
+                        <th>Altitude</th>
+                        <th>Speed</th>
+                        <th>Direction</th>
+                    </tr>
+                </thead>
+                <tbody id="aircraft-list">
+                    <!-- Aircraft rows will be inserted here -->
+                </tbody>
+            </table>
+
+            <!-- No Aircraft Message -->
+            <div id="no-aircraft" class="hidden">
+                <p>No planes heading this way right now!</p>
+                <p>Keep watching the sky...</p>
+            </div>
+        </div>
+
+        <!-- Footer with stats -->
+        <footer id="dashboard-footer">
+            <div class="stat">
+                <span class="stat-label">Total Planes:</span>
+                <span id="total-count" class="stat-value">0</span>
+            </div>
+            <div class="stat">
+                <span class="stat-label">Next Arrival:</span>
+                <span id="next-arrival" class="stat-value">--:--</span>
+            </div>
+            <div class="stat">
+                <span class="stat-label">Last Update:</span>
+                <span id="last-update" class="stat-value">Never</span>
+            </div>
+        </footer>
+    </div>
+
+    <script src="dashboard.js"></script>
+</body>
+
+</html>

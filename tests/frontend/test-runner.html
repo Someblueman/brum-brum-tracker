@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Frontend Test Runner</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-result {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .test-result.pass {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .test-result.fail {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .test-summary {
+            margin: 20px 0;
+            padding: 15px;
+            background-color: #fff;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        #test-output {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Frontend Test Runner</h1>
+    <div class="test-summary" id="test-summary">
+        <p>Running tests...</p>
+    </div>
+    <div id="test-output"></div>
+
+    <!-- Simple test framework -->
+    <script>
+        window.TestRunner = {
+            tests: [],
+            results: [],
+            
+            describe: function(description, testFn) {
+                this.tests.push({
+                    description: description,
+                    testFn: testFn
+                });
+            },
+            
+            it: function(description, testFn) {
+                return {
+                    description: description,
+                    testFn: testFn
+                };
+            },
+            
+            assert: {
+                equal: function(actual, expected, message) {
+                    if (actual !== expected) {
+                        throw new Error(message || `Expected ${expected} but got ${actual}`);
+                    }
+                },
+                
+                deepEqual: function(actual, expected, message) {
+                    if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+                        throw new Error(message || `Objects are not equal`);
+                    }
+                },
+                
+                isTrue: function(value, message) {
+                    if (!value) {
+                        throw new Error(message || `Expected true but got ${value}`);
+                    }
+                },
+                
+                isFalse: function(value, message) {
+                    if (value) {
+                        throw new Error(message || `Expected false but got ${value}`);
+                    }
+                },
+                
+                throws: function(fn, message) {
+                    let threw = false;
+                    try {
+                        fn();
+                    } catch (e) {
+                        threw = true;
+                    }
+                    if (!threw) {
+                        throw new Error(message || 'Expected function to throw');
+                    }
+                },
+                
+                notNull: function(value, message) {
+                    if (value === null || value === undefined) {
+                        throw new Error(message || `Expected non-null value but got ${value}`);
+                    }
+                }
+            },
+            
+            async run() {
+                const output = document.getElementById('test-output');
+                const summary = document.getElementById('test-summary');
+                let passed = 0;
+                let failed = 0;
+                
+                for (const suite of this.tests) {
+                    const suiteDiv = document.createElement('div');
+                    suiteDiv.innerHTML = `<h2>${suite.description}</h2>`;
+                    output.appendChild(suiteDiv);
+                    
+                    try {
+                        const tests = [];
+                        await suite.testFn((desc, fn) => {
+                            tests.push({ description: desc, testFn: fn });
+                        });
+                        
+                        for (const test of tests) {
+                            const testDiv = document.createElement('div');
+                            testDiv.className = 'test-result';
+                            
+                            try {
+                                await test.testFn();
+                                testDiv.className += ' pass';
+                                testDiv.textContent = `✓ ${test.description}`;
+                                passed++;
+                            } catch (error) {
+                                testDiv.className += ' fail';
+                                testDiv.innerHTML = `✗ ${test.description}<br><small>${error.message}</small>`;
+                                failed++;
+                                console.error(error);
+                            }
+                            
+                            suiteDiv.appendChild(testDiv);
+                        }
+                    } catch (error) {
+                        const errorDiv = document.createElement('div');
+                        errorDiv.className = 'test-result fail';
+                        errorDiv.innerHTML = `✗ Suite error: ${error.message}`;
+                        suiteDiv.appendChild(errorDiv);
+                        failed++;
+                    }
+                }
+                
+                summary.innerHTML = `
+                    <h3>Test Summary</h3>
+                    <p>Total: ${passed + failed}</p>
+                    <p style="color: green;">Passed: ${passed}</p>
+                    <p style="color: red;">Failed: ${failed}</p>
+                `;
+            }
+        };
+
+        // Alias for convenience
+        const describe = TestRunner.describe.bind(TestRunner);
+        const it = TestRunner.it.bind(TestRunner);
+        const assert = TestRunner.assert;
+    </script>
+
+    <!-- Load test files -->
+    <script src="test_ui_utils.js"></script>
+    <script src="test_device_orientation.js"></script>
+    <script src="test_config.js"></script>
+    <script src="test_error_handler.js"></script>
+    <script src="test_main_ui.js"></script>
+    <script src="test_logbook_ui.js"></script>
+    <script src="test_dashboard_ui.js"></script>
+
+    <!-- Run tests -->
+    <script>
+        window.addEventListener('load', () => {
+            TestRunner.run();
+        });
+    </script>
+</body>
+</html>
