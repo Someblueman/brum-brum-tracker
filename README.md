@@ -16,6 +16,21 @@ My son Teddy is turning 2 soon, and **ABSOLUTELY** loves machines of all sorts, 
 - **Dashboard view** showing all approaching aircraft
 - **PWA support** for installation on phones/tablets
 
+## Screenshots
+
+<div align="center">
+
+### Start Screen
+<img src="docs/screenshots/start_screen.png" alt="Start screen with family voice selection" width="300">
+
+### Main Tracker View
+<img src="docs/screenshots/brum-brum-tracker.png" alt="Main tracker showing aircraft with directional arrow" width="300">
+
+### Captain's Logbook
+<img src="docs/screenshots/logbook.png" alt="Captain's logbook showing spotted aircraft history" width="300">
+
+</div>
+
 ## Quick Start
 
 ### Prerequisites
